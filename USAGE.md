@@ -3,6 +3,35 @@
 Practical order of operations. `README.md` explains why the pieces look the way they
 do; `CLAUDE.md` is the orchestrator's rulebook. This file is what to actually type.
 
+## Where you run it, and where the work happens
+
+Two directories with different jobs. You do not write code inside this repository.
+
+| Directory | Role |
+|---|---|
+| this repository | control plane — tasks, approvals, packets, run records |
+| your project | the work — `target_repo` points here |
+
+Neither launcher cares about your current directory. `bin/claude-main` derives the root
+from its own path, and `bin/worker` resolves a relative `--task` against that root
+rather than against the shell's working directory, so `--task tasks/x/task.md` means the
+same file from anywhere. Call either by absolute path:
+
+```sh
+/home/ptg/multiagent-claude-main/bin/claude-main
+```
+
+Or put it on `PATH` once and forget where it lives:
+
+```sh
+ln -s /home/ptg/multiagent-claude-main/bin/claude-main ~/.local/bin/claude-main
+```
+
+The launcher passes `--add-dir <this repository>` and nothing else, so tell main the
+absolute path of the project you want worked on; main writes it into the task's
+`target_repo`. Pointing `target_repo` at this repository is refused — a worker may not
+edit the control plane that authorizes it.
+
 ## Who does what
 
 | Step | Who |
