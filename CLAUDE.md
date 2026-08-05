@@ -103,7 +103,8 @@ maps each defect found by live dispatch to the run folder holding its raw stderr
 those folders stay on the machine that produced them. `ISSUES.md` holds the limits that
 remain unproven, with the wording each one permits; it is mirrored as GitHub issues.
 `USAGE.md` is the order of operations, and `README.md` explains why a given argv or
-mount looks the way it does.
+mount looks the way it does. `CHANGELOG.md` records how the rules here were
+arrived at; it is not loaded by default and is read only when that history matters.
 
 State of the harness as of 2026-08-05: all five workers have completed a real dispatch,
 the producer-reviewer pipeline has run end to end across two rounds, and `bin/worker

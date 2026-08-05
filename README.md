@@ -22,6 +22,7 @@ variant for K3; that pin is an explicit human decision, and the dispatcher still
 never swaps a variant on its own.
 
 For the order of operations when actually running a task, see [USAGE.md](USAGE.md).
+How the harness reached its current shape is in [CHANGELOG.md](CHANGELOG.md).
 Known gaps between what is pinned and what can be proven are tracked in
 [ISSUES.md](ISSUES.md) and filed as
 [#1 a model pin is not exclusive](https://github.com/parktg72/multiagent-claude-main/issues/1)
