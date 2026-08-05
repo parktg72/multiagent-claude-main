@@ -21,6 +21,8 @@ paid call. Kimi is pinned to `max` because the opencode catalog defines no other
 variant for K3; that pin is an explicit human decision, and the dispatcher still
 never swaps a variant on its own.
 
+For the order of operations when actually running a task, see [USAGE.md](USAGE.md).
+
 ## Safe Start — No Model Calls
 
 ```sh
