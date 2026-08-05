@@ -1,5 +1,11 @@
 # Open Issues
 
+Filed upstream as
+[#1](https://github.com/parktg72/multiagent-claude-main/issues/1) and
+[#2](https://github.com/parktg72/multiagent-claude-main/issues/2). This file holds the
+long form, including the evidence paths, which stay on the machine that ran the
+dispatches.
+
 Known gaps between what the harness pins and what it can prove. Both were found by
 dispatching for real on 2026-08-04 and 2026-08-05, and both are unresolved rather than
 mitigated. Neither blocks use; each limits what a claim about a run may say.
