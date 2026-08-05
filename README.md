@@ -23,7 +23,10 @@ never swaps a variant on its own.
 
 For the order of operations when actually running a task, see [USAGE.md](USAGE.md).
 Known gaps between what is pinned and what can be proven are tracked in
-[ISSUES.md](ISSUES.md).
+[ISSUES.md](ISSUES.md) and filed as
+[#1 a model pin is not exclusive](https://github.com/parktg72/multiagent-claude-main/issues/1)
+and
+[#2 the opencode variant pin is not enforceable](https://github.com/parktg72/multiagent-claude-main/issues/2).
 
 ## Safe Start — No Model Calls
 
