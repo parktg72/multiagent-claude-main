@@ -22,6 +22,8 @@ variant for K3; that pin is an explicit human decision, and the dispatcher still
 never swaps a variant on its own.
 
 For the order of operations when actually running a task, see [USAGE.md](USAGE.md).
+Known gaps between what is pinned and what can be proven are tracked in
+[ISSUES.md](ISSUES.md).
 
 ## Safe Start — No Model Calls
 
