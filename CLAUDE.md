@@ -96,6 +96,19 @@ Each backend declares the single credential file it needs, copied into the sandb
 home through a descriptor. There is no blanket auth mount: an undeclared kind fails
 closed rather than exposing the whole auth directory.
 
+## Where Prior Work Is Recorded
+
+Before diagnosing a backend failure, check whether it already happened. `tasks/INDEX.md`
+maps each defect found by live dispatch to the run folder holding its raw stderr, and
+those folders stay on the machine that produced them. `ISSUES.md` holds the limits that
+remain unproven, with the wording each one permits; it is mirrored as GitHub issues.
+`USAGE.md` is the order of operations, and `README.md` explains why a given argv or
+mount looks the way it does.
+
+State of the harness as of 2026-08-05: all five workers have completed a real dispatch,
+the producer-reviewer pipeline has run end to end across two rounds, and `bin/worker
+preflight` reports a `live_dispatch` observation per pin. Two limits stay open.
+
 ## Re-entry
 
 Read `task.md`, `context.md`, and append-only `log.md`; then re-run preflight and
