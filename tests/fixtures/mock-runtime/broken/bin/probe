@@ -1,0 +1,8 @@
+#!/usr/bin/python3
+from pathlib import Path
+import sys
+
+marker = Path(__file__).resolve().parents[1] / "lib" / "marker.txt"
+if sys.argv[1:] != ["--version"] or not marker.is_file():
+    raise SystemExit(71)
+print("fixture runtime started")

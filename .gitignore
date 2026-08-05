@@ -1,0 +1,22 @@
+# Private task packets, raw worker output, approvals, and transient runtime state.
+tasks/*
+!tasks/.gitkeep
+# Summary only: no raw model output, no verdict bodies, no credentials.
+!tasks/INDEX.md
+.runtime/
+worker-test-*/
+hardening-test-*/
+dispatcher-test-*/
+startup-probe-*/
+sandbox-startup-*/
+__pycache__/
+*.py[cod]
+
+# Never commit local secrets or provider credentials.
+.env
+.env.local
+
+# Machine-local agent session settings and their atomic-write temp files.
+# The temp form appears mid-write and must not be caught by `git add -A`.
+.claude/settings.local.json
+.claude/*.tmp.*

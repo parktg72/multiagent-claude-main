@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+"""Strict test-only Codex CLI. Unknown or missing flags fail."""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import signal
+import sys
+import time
+
+
+HELP = """--model --config --sandbox --cd --skip-git-repo-check --ephemeral --ignore-user-config --ignore-rules --output-schema"""
+
+
+def verdict() -> dict[str, object]:
+    return {
+        "verdict": "conditional",
+        "evidence": ["Mock review packet supplied a diff locator at src/a.py:1."],
+        "unverified_claims": ["Mock execution did not inspect a live provider endpoint."],
+        "risks": [
+            {
+                "failure_mode": "Authorization bypass can occur if approval journal binding is skipped.",
+                "trigger": "A mutable task log is accepted instead of the private approval journal.",
+                "impact": "An unapproved writer could modify source paths outside intended human authorization.",
+                "evidence_or_locator": "Regression fixture requires a runtime journal event bound to role and target digest.",
+                "mitigation": "Require exact journal binding before every dispatch and ignore task log approval text.",
+            }
+        ],
+        "summary": "Mock fixture verdict for contract tests only.",
+        "recommendations": ["Run an approved real-provider review only after endpoint smoke authorization."],
+    }
+
+
+def fail() -> int:
+    sys.stderr.write("mock codex: invalid argv\n")
+    return 64
+
+
+def main() -> int:
+    args = sys.argv[1:]
+    if args == ["--version"]:
+        return startup()
+    if args == ["exec", "--help"]:
+        print(HELP)
+        return 0
+    if not args or args[0] != "exec":
+        return fail()
+    pairs: dict[str, str] = {}
+    flags: set[str] = set()
+    index = 1
+    while index < len(args):
+        item = args[index]
+        if item == "-":
+            if index != len(args) - 1:
+                return fail()
+            break
+        if item in {"--model", "-c", "--sandbox", "--cd", "--output-schema"}:
+            if index + 1 >= len(args) or item in pairs:
+                return fail()
+            pairs[item] = args[index + 1]
+            index += 2
+            continue
+        if item in {"--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "--ignore-rules"}:
+            flags.add(item)
+            index += 1
+            continue
+        return fail()
+    else:
+        return fail()
+    required_flags = {"--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "--ignore-rules"}
+    if flags != required_flags or set(pairs).difference({"--model", "-c", "--sandbox", "--cd", "--output-schema"}):
+        return fail()
+    model = pairs.get("--model")
+    if model == "gpt-5.6-sol":
+        if pairs.get("-c") != 'model_reasoning_effort="high"' or pairs.get("--sandbox") != "danger-full-access" or "--output-schema" in pairs:
+            return fail()
+    elif model == "gpt-5.6-terra":
+        if pairs.get("-c") != 'model_reasoning_effort="max"' or pairs.get("--sandbox") != "read-only" or pairs.get("--output-schema") != "/input/review-verdict.schema.json":
+            return fail()
+    else:
+        return fail()
+    _ = sys.stdin.read()
+    mode = os.environ.get("MOCK_REVIEW_MODE")
+    if mode == "timeout":
+        time.sleep(3)
+        return 0
+    if mode == "signal":
+        os.kill(os.getpid(), signal.SIGTERM)
+    if mode == "exit124":
+        return 124
+    if mode == "invalid":
+        print(json.dumps({"verdict": "approve"}))
+        return 0
+    if model == "gpt-5.6-sol":
+        print("mock implementation complete")
+    else:
+        print(json.dumps(verdict()))
+    return 0
+
+
+def startup() -> int:
+    hidden = os.environ.get("MOCK_STARTUP_MUST_HIDE")
+    if hidden and Path(hidden).exists():
+        return 73
+    if os.environ.get("MOCK_STARTUP_FAIL") == "codex":
+        return 70
+    print("mock codex 1.0")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

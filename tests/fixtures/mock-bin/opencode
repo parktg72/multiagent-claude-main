@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+"""Strict test-only OpenCode CLI; its catalog mirrors the pinned K3 max variant."""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import sys
+
+
+HELP = "--pure --model --variant --format --dir --file"
+
+
+def verdict() -> dict[str, object]:
+    return {
+        "verdict": "conditional",
+        "evidence": ["Mock OpenCode received only an attached neutral review packet."],
+        "unverified_claims": ["Mock catalog does not establish a live provider endpoint."],
+        "risks": [{"failure_mode": "Large-context review can omit a changed file not present in the packet.", "trigger": "Packet assembly excludes a cross-cutting source path.", "impact": "Impact analysis can miss a regression in an unmounted source area.", "evidence_or_locator": "Review input schema names only supplied diff and test evidence as admissible material.", "mitigation": "Regenerate packet from an explicit changed-file manifest before dispatch."}],
+        "summary": "Mock Kimi fixture verdict for contract tests only.",
+        "recommendations": [],
+    }
+
+
+def main() -> int:
+    args = sys.argv[1:]
+    if args == ["run", "--help"]:
+        print(HELP)
+        return 0
+    if args == ["--pure", "--version"]:
+        return startup()
+    if args == ["--pure", "models", "opencode-go", "--verbose"]:
+        print("opencode-go/kimi-k3")
+        print(json.dumps({"id": "kimi-k3", "variants": {"max": {"reasoningEffort": "max"}}}))
+        return 0
+    # The real CLI treats --file as an array option that consumes trailing
+    # positionals, so the message must come before it. Refuse any other order.
+    expected = ["--pure", "run", "--model", "opencode-go/kimi-k3", "--variant", "max", "--format", "json", "--dir", "/workspace"]
+    if args[: len(expected)] != expected or len(args) != len(expected) + 4:
+        return 64
+    message, file_flag, packet, schema = args[len(expected) :]
+    if file_flag != "--file" or packet != "/input/review-input.json" or schema != "/input/review-verdict.schema.json":
+        return 64
+    # This CLI cannot enforce a schema, so the message must carry the shape demand.
+    if message.startswith("-") or "packet" not in message or "additional property" not in message:
+        return 64
+    # Mirror the real CLI: JSONL events, with the answer inside part.text. An earlier
+    # fixture printed a {"result": ...} envelope the real binary never emits, which
+    # made the extractor look correct while it could not read a live stream.
+    print(json.dumps({"type": "step_start", "part": {"type": "step-start"}}))
+    print(json.dumps({"type": "text", "part": {"type": "text", "text": json.dumps(verdict())}}))
+    print(json.dumps({"type": "step_finish", "part": {"type": "step-finish"}}))
+    return 0
+
+
+def startup() -> int:
+    hidden = os.environ.get("MOCK_STARTUP_MUST_HIDE")
+    if hidden and Path(hidden).exists():
+        return 73
+    if os.environ.get("MOCK_STARTUP_FAIL") == "opencode":
+        return 70
+    print("mock opencode 1.0")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

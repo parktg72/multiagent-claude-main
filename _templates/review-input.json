@@ -1,0 +1,7 @@
+{
+  "question": "State exact review question.",
+  "requirements": ["State acceptance rule."],
+  "diff": "Provide neutral diff or relevant code excerpt.",
+  "test_evidence": "Provide neutral test output or clearly state missing evidence.",
+  "artifact_paths": []
+}

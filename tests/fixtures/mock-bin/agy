@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+"""Strict test-only AGY CLI."""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import sys
+
+
+HELP = "--print --model --effort --mode --sandbox --disable-slash-commands --add-dir --output-format --json-schema"
+
+
+def verdict() -> dict[str, object]:
+    return {
+        "verdict": "conditional",
+        "evidence": ["Mock AGY received structured test evidence with an explicit locator."],
+        "unverified_claims": ["No provider endpoint was contacted by the mock."],
+        "risks": [{"failure_mode": "Evidence packet can be stale after source changes.", "trigger": "Producer changes files after reviewer packet creation.", "impact": "Review can approve an obsolete diff and miss a later regression.", "evidence_or_locator": "Packet timestamp and source revision must be compared before synthesis.", "mitigation": "Regenerate a neutral packet after producer changes before review."}],
+        "summary": "Mock AGY fixture verdict for contract tests only.",
+        "recommendations": [],
+    }
+
+
+def main() -> int:
+    args = sys.argv[1:]
+    if args == ["--help"]:
+        print(HELP)
+        return 0
+    if args == ["--version"]:
+        return startup()
+    if args == ["models"]:
+        print("gemini-3.1-pro-high")
+        return 0
+    # The real CLI treats --print as a value flag and stops parsing at the first
+    # positional, so this fixture refuses any order that would silently drop a flag.
+    expected = ["--model", "gemini-3.1-pro-high", "--effort", "high", "--mode", "plan", "--sandbox", "--disable-slash-commands", "--add-dir", "/input", "--output-format", "json", "--json-schema", "/input/review-verdict.schema.json"]
+    if args[: len(expected)] != expected:
+        return 64
+    if len(args) != len(expected) + 2 or args[len(expected)] != "--print":
+        return 64
+    instruction = args[-1]
+    if "no-yes-man" not in instruction or "/input/review-input.json" not in instruction:
+        return 64
+    # The packet must never travel in argv where the host process list can read it.
+    if '"diff"' in instruction or "@@" in instruction:
+        return 64
+    _ = sys.stdin.read()
+    print(json.dumps(verdict()))
+    return 0
+
+
+def startup() -> int:
+    hidden = os.environ.get("MOCK_STARTUP_MUST_HIDE")
+    if hidden and Path(hidden).exists():
+        return 73
+    if os.environ.get("MOCK_STARTUP_FAIL") == "agy":
+        return 70
+    print("mock agy 1.0")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+"""Strict test-only Claude CLI for Fable argv coverage."""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import sys
+
+
+HELP = "--bare --model --effort --add-dir --print --no-session-persistence --tools --permission-mode --output-format --json-schema"
+
+
+def verdict() -> dict[str, object]:
+    return {
+        "verdict": "conditional",
+        "evidence": ["Mock Fable received a no-tools structured review prompt."],
+        "unverified_claims": ["Mock response does not prove Fable endpoint availability."],
+        "risks": [{"failure_mode": "A design assumption can remain untested despite a coherent proposal.", "trigger": "Architecture decision is accepted without a reproducing test or threat model.", "impact": "Later implementation can encode a security or regression flaw into multiple components.", "evidence_or_locator": "Advisor packet separates observed evidence from explicitly unverified design claims.", "mitigation": "Require Claude main to convert advice into a scoped test and independent review packet."}],
+        "summary": "Mock Fable fixture verdict for contract tests only.",
+        "recommendations": [],
+    }
+
+
+def main() -> int:
+    args = sys.argv[1:]
+    if "--bare" in args:
+        # Bare mode reads neither OAuth nor keychain, so it can never authenticate here.
+        sys.stderr.write("mock claude: --bare cannot authenticate an OAuth account\n")
+        return 64
+    if args == ["--help"]:
+        print(HELP)
+        return 0
+    if args == ["--version"]:
+        return startup()
+    required = ["--model", "claude-fable-5", "--print", "--no-session-persistence", "--tools", "", "--permission-mode", "plan", "--output-format", "json", "--json-schema"]
+    if args[: len(required)] != required or len(args) != len(required) + 1:
+        return 64
+    _ = sys.stdin.read()
+    print(json.dumps({"result": json.dumps(verdict())}))
+    return 0
+
+
+def startup() -> int:
+    hidden = os.environ.get("MOCK_STARTUP_MUST_HIDE")
+    if hidden and Path(hidden).exists():
+        return 73
+    if os.environ.get("MOCK_STARTUP_FAIL") == "claude":
+        return 70
+    print("mock claude 1.0")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

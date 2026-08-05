@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+"""Strict test-only Bubblewrap adapter. It never creates a mount namespace."""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import PurePosixPath
+import sys
+
+
+PAIR_OPTIONS = {"--ro-bind", "--bind"}
+ONE_OPTIONS = {"--dir", "--tmpfs", "--proc", "--dev", "--chdir"}
+
+
+def translate(path: str, bindings: list[tuple[str, str]]) -> str:
+    candidates = sorted(bindings, key=lambda pair: len(pair[1]), reverse=True)
+    for source, destination in candidates:
+        if path == destination or path.startswith(destination.rstrip("/") + "/"):
+            suffix = path[len(destination) :].lstrip("/")
+            return str(PurePosixPath(source, suffix)) if suffix else source
+    return path
+
+
+def main() -> int:
+    args = sys.argv[1:]
+    bindings: list[tuple[str, str]] = []
+    index = 0
+    while index < len(args):
+        option = args[index]
+        if option == "--":
+            break
+        if option in {"--die-with-parent", "--new-session"}:
+            index += 1
+            continue
+        if option in PAIR_OPTIONS:
+            if index + 2 >= len(args):
+                return 64
+            source, destination = args[index + 1], args[index + 2]
+            if option == "--ro-bind" and source == "/" and destination == "/":
+                return 64
+            bindings.append((source, destination))
+            index += 3
+            continue
+        if option == "--setenv":
+            if index + 2 >= len(args):
+                return 64
+            index += 3
+            continue
+        if option in ONE_OPTIONS:
+            if index + 1 >= len(args):
+                return 64
+            index += 2
+            continue
+        return 64
+    if index >= len(args) or args[index] != "--" or index + 1 >= len(args):
+        return 64
+    inner = args[index + 1 :]
+    capture = os.environ.get("MOCK_BWRAP_CAPTURE")
+    if capture:
+        with open(capture, "w", encoding="utf-8") as handle:
+            json.dump(args, handle)
+    executable = translate(inner[0], bindings)
+    os.execvpe(executable, [executable, *inner[1:]], os.environ)
+    return 127
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
