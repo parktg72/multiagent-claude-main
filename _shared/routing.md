@@ -27,8 +27,8 @@
 
 Never let a reviewer invoke another worker. Never send reviewer A's verdict to
 reviewer B. Never use hidden fallback, a separate supervisor, or recursive worker
-delegation. Kimi uses explicit model/variant plus filesystem sandbox; project-agent
-lookup is not an authority or permission boundary.
+delegation. Both opencode workers use explicit model/variant plus filesystem sandbox;
+project-agent lookup is not an authority or permission boundary.
 
 ## Required Sequence
 
@@ -36,7 +36,7 @@ lookup is not an authority or permission boundary.
 Claude main: define task + neutral evidence packet
   -> human approval
   -> codex-sol producer (if edit needed)
-  -> codex-terra / AGY / Kimi / Fable independently, each with neutral packet
+  -> codex-terra / AGY / Kimi / DeepSeek / Fable independently, each with neutral packet
   -> Claude main reads raw outputs and decides
 ```
 

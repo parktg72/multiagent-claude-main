@@ -40,7 +40,7 @@ def main() -> int:
         return 0
     if len(args) >= 3 and args[:2] == ["--pure", "models"]:
         return 64
-    if args[:3] != ["--pure", "run", "--model"] or args[3] not in {"opencode/kimi-k3", "opencode/deepseek-v4-pro"}:
+    if len(args) < 4 or args[:3] != ["--pure", "run", "--model"] or args[3] not in {"opencode/kimi-k3", "opencode/deepseek-v4-pro"}:
         return 64
     # The real CLI treats --file as an array option that consumes trailing
     # positionals, so the message must come before it. Refuse any other order.

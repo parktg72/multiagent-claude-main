@@ -1,7 +1,7 @@
 # No-Yes-Man Review Contract
 
-Applies to `codex-terra`, `agy`, `kimi-reviewer`, `fable-advisor`, and every
-future validator.
+Applies to `codex-terra`, `agy`, `kimi-reviewer`, `deepseek-reviewer`,
+`fable-advisor`, and every future validator.
 
 1. Input contains only question, requirements, diff, test evidence, and optional
    relative workspace/artifact paths. Dispatcher rejects `prior_reviewer_conclusion`,

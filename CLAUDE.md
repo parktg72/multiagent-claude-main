@@ -47,8 +47,8 @@ Worker pool is fixed:
 6. Run producer before reviewers. Run reviewers independently: never place another
    reviewer's conclusion in their input. Main alone reads private raw results and
    synthesizes final decision.
-7. Require no-yes-man verdict schema from Terra, AGY, Kimi, and Fable. Missing,
-   malformed, or rubber-stamp verdict is failure, never success.
+7. Require no-yes-man verdict schema from Terra, AGY, Kimi, DeepSeek, and Fable.
+   Missing, malformed, or rubber-stamp verdict is failure, never success.
 8. Escalate important design, ambiguity, security, or regression risk to
    `fable-advisor`; main makes final decision.
 9. Build the reviewer packet as evidence main can defend. Include the full command

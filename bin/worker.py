@@ -1626,7 +1626,7 @@ def backend_preflight(role: str, backend: dict[str, Any], cache: PreflightCache 
         # The pin is `provider/model`. Deriving both from it keeps a second opencode
         # worker a configuration change instead of another role-named branch.
         provider, separator, model_id = str(backend.get("model", "")).partition("/")
-        if not separator or not re.fullmatch(r"[a-z0-9._-]{1,64}", provider) or not model_id:
+        if not separator or not re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,63}", provider) or not model_id:
             return BackendPreflight("unavailable_fail_closed", "opencode model pin must be provider/model", startup, "unverified", "unverified", "model_unavailable")
         ok, catalog = cached_local_probe(active_cache, f"opencode-models:{provider}", ["opencode", "--pure", "models", provider, "--verbose"])
         metadata = opencode_model_metadata(catalog, model_id) if ok else None

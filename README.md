@@ -52,6 +52,12 @@ mode never writes one. It stays a historical observation: a provider can retire 
 model or expire a token after it was seen working, and preflight still spends nothing
 to recheck.
 
+Exit zero is necessary for this record but is not by itself proof that a model
+answered: a 2026-08-06 `opencode/kimi-k3` dispatch exited zero with zero tokens and no
+text part. For a reviewer the no-yes-man verdict contract is what turns exit zero into
+that proof, since a run failing it never reaches `record_live_observation`; `codex-sol`
+has `requires_no_yes_man` false and no equivalent catcher.
+
 `preflight` uses local CLI help/catalog/cache inspection and a non-model Bubblewrap
 filesystem probe. Every CLI also runs its isolated-network sandbox `--version` startup
 probe with fake HOME and no auth mount. `sandbox_startup`, `endpoint`, `auth`, and

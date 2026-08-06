@@ -28,7 +28,12 @@ was reachable from the mock suite.
   `claude-haiku-4-5` call beside the pinned model; other backends do not report
   per-model usage at all, so the same may happen there unobserved.
 - The opencode `--variant` pin is not enforceable: an invalid variant is accepted
-  silently and no event states which variant ran. Recorded in `kimi-live-test/task.md`.
+  silently and no event states which variant ran. Open, upstream behaviour; exposure
+  became active on 2026-08-06. Affects `kimi-reviewer` (`opencode/kimi-k3`, variant
+  `max`) and `deepseek-reviewer` (`opencode/deepseek-v4-pro`, variant `max`) — K3's
+  catalog defines only `max`, so the gap was latent until `deepseek-reviewer` was
+  pinned to a model whose catalog also offers `high`. Recorded in
+  `kimi-live-test/task.md` and `ISSUES.md`.
 
 ## Pipeline run
 
@@ -63,3 +68,6 @@ each a correct rejection. See its `log.md` for the append-only trail.
 | sol-live-test | `codex-sol` | 20260804T014718 | **ok** — producer edit applied |
 | terra-live-test | `codex-terra` | 20260804T022600 | **fail** — strict schema rejected: missing 'summary' in required |
 | terra-live-test | `codex-terra` | 20260804T042438 | **ok** — verdict conditional |
+| zen-repin-live | `deepseek-reviewer` | 20260806T043336 | **ok** — verdict conditional |
+| zen-repin-live | `kimi-reviewer` | 20260806T042330 | **fail** — exit 0, reason unknown, zero input and output tokens, cost 0, no text part after 63s |
+| zen-repin-live | `kimi-reviewer` | 20260806T043516 | **ok** — verdict approve |

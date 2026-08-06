@@ -250,7 +250,7 @@ the recorded live observation, which the README now says outright."
 **Files:**
 - Modify: `_shared/backends.json:64` (insert a block after `kimi-reviewer`)
 - Modify: `bin/worker.py:1573-1576` (`cli_contracts`), `:1638` (`expected`), `:1650` (pins), `:1712` (`required_argv`), `:1937` (preflight loop)
-- Modify: `_shared/routing.md`, `USAGE.md:121`, `CLAUDE.md`, `README.md`
+- Modify: `_shared/routing.md`, `_shared/invariants.md:5`, `USAGE.md:121`, `CLAUDE.md`, `README.md`
 - Test: `tests/fixtures/mock-bin/opencode`, `tests/test_worker.py`, `tests/test_hardening.py`
 
 **Interfaces:**
@@ -453,7 +453,14 @@ Expected: both `available_pending_auth ... variant_verified`, with models `openc
   latent one. `max` is an explicit human decision recorded on 2026-08-06.
 ```
 
-Also change `CLAUDE.md`'s opening line "Worker pool is fixed:" context and `README.md:3` from "Five explicit workers" to "Six explicit workers".
+Also change `README.md:3` from "Five explicit workers" to "Six explicit workers", and
+`_shared/invariants.md:5` from "Exactly five named workers" to "Exactly six named
+workers". That file documents what `bin/check-invariants` enforces; no code reads it, so
+a stale count there is invisible to the gate and must be caught by eye.
+
+Leave `CLAUDE.md:109` ("all five workers have completed a real dispatch") alone — it is
+a statement about live verification, not inventory, and it stays false until Task 5
+makes it true. Task 5 Step 10 owns that line.
 
 `USAGE.md:121`, replacing the third row:
 
@@ -484,10 +491,29 @@ downgrade; a test asserts it refuses."
 
 **Files:**
 - Modify: `ISSUES.md:50-90`
+- Modify: `_shared/capability-policy.md:9`
 
 **Interfaces:**
 - Consumes: the `deepseek-reviewer` role from Task 2.
 - Produces: nothing code-facing. Task 5 cites this wording when reporting the dispatch.
+
+- [ ] **Step 0: Correct the capability policy table**
+
+Found by Task 2's reviewer, in no earlier task's file list. `_shared/capability-policy.md:9`
+still names the pre-repin pin and the table has no row for the sixth worker, so the
+worker-facing policy set states a pin the dispatcher would refuse. Replace line 9 with:
+
+```markdown
+| `kimi-reviewer` | `opencode/kimi-k3`, `max` | read-only | cross-cutting impact, one contested verdict |
+| `deepseek-reviewer` | `opencode/deepseek-v4-pro`, `max` | read-only | per-file audits, long enumerative findings |
+```
+
+Verify no stale token survives outside history:
+
+Run: `grep -rn "opencode-go" _shared/ README.md CLAUDE.md USAGE.md`
+Expected: no hit. `ISSUES.md:60` and `:68` keep theirs — they are transcripts of probes
+that really were run against `opencode-go`, and rewriting them would falsify evidence.
+`CHANGELOG.md` and the 2026-08-02/08-03 plans keep theirs for the same reason.
 
 - [ ] **Step 1: Replace the Affects and Evidence lines**
 

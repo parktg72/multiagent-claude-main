@@ -5,6 +5,38 @@ stays short; this file records how the rules were arrived at and is read only wh
 someone wants that. Published commit history begins at a squashed root commit, so the
 work below predates what `git log` shows.
 
+## 2026-08-06 — repin to opencode Zen, a sixth worker, and a second exit-zero failure
+
+`kimi-reviewer` moved from provider `opencode-go` to `opencode`. The provider's
+display name is "OpenCode Zen", but `opencode --pure models opencode-zen` answers
+`Provider not found` — the display name is not the token the CLI accepts, and
+`opencode-zen` must never appear in a pin. The opencode preflight branch was
+generalized from a role-named hardcode of provider and model id to deriving both
+from the configured `provider/model` pin, so the repin needed configuration rather
+than new branch logic, and the same generalization is what let the sixth worker be
+added as configuration too.
+
+**`deepseek-reviewer`**, pinned to `opencode/deepseek-v4-pro` at variant `max`, joined
+the pool for enumerative review — per-file audits and long findings lists, where its
+384k output ceiling against Kimi's 131k matters. `max` was chosen by explicit human
+decision even though this model's catalog also advertises `high`: it is the first
+opencode pin where the unenforceable `--variant` limit in `ISSUES.md` (#2) stopped
+being latent, since K3's catalog defines only `max` and could never silently
+downgrade. Restricting opencode roles to single-variant models was considered and
+declined on the same date, so the gap is recorded as a decision rather than an
+oversight.
+
+Live re-verification of both opencode reviewers turned up an eleventh defect,
+distinct from the ten below: a `kimi-reviewer` dispatch exited zero with
+`reason: "unknown"`, zero input and output tokens, cost 0, and no text part after 63s.
+Only the no-yes-man verdict contract caught it — an identical re-dispatch immediately
+after succeeded, so it reads as a transient, unannounced provider failure rather than
+an argv or extraction bug. It is the second time this harness has seen exit zero used
+as a stand-in for success, after the `agy --print` defect below, and it is why
+`README.md` now says exit zero is necessary but not sufficient for a live
+observation, and that for a reviewer it is the verdict contract, not the exit code,
+that supplies the missing proof.
+
 ## 2026-08-05 — first live dispatch, and what it cost to get there
 
 Before this date the harness had a passing test suite and had never run. Every backend
