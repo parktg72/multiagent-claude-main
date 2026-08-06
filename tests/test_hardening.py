@@ -589,11 +589,17 @@ class HardenedDispatcherTests(unittest.TestCase):
         ok, catalog, status = worker.probe_with_status(
             ["agy", "models"], timeout=worker.CATALOG_PROBE_TIMEOUT_SECONDS
         )
-        if status in {"timeout", "missing"}:
-            # Network latency or an absent local CLI is not a hardening regression.
-            # `bin/worker preflight` stays the authoritative fail-closed gate.
+        if not ok:
+            # A probe that did not answer produced no catalog, so there is no pin to
+            # read and no hardening regression to see. Network latency, an absent CLI,
+            # and a signed-out one all land here: `agy models` answers `Error: Please
+            # sign in to view available models` and exits 1, which `probe_with_status`
+            # classifies as `exit` rather than `missing`. Drift is the other case — a
+            # catalog that exists and lacks the pin — and it still reaches the assertion
+            # below, because `ok` is exactly the "a catalog came back" signal.
+            # `bin/worker preflight` stays the authoritative fail-closed gate for all of
+            # these, and reports a signed-out agy as `catalog_unavailable`.
             self.skipTest(f"local agy catalog probe unavailable ({status})")
-        self.assertTrue(ok, catalog)
         self.assertTrue(worker.exact_catalog_line(catalog, "gemini-3.1-pro-high"), catalog)
 
     def test_live_observation_credits_only_the_exact_pin(self) -> None:
