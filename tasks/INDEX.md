@@ -48,9 +48,19 @@ eleven was reachable from the mock suite.
   stderr, opencode in its JSONL stream, agy and the Claude CLI in a `usage` object in
   their stdout JSON — and withholds the observation on a reported zero. Replayed against
   every run in this index it flags run 20260806T042330 and nothing else. Five runs report
-  no count at all; each is a run some other gate had already failed, including the
-  defect-4 agy run, whose output was prose because `--print` had swallowed
-  `--output-format json`.
+  no count at all; each is a run some other gate had already failed. Four of those five
+  exited nonzero and never reached the check.
+
+  **What the fix does not close.** The fifth exited *zero* with no parseable count: the
+  defect-4 agy run, whose output was prose rather than JSON because `--print` had
+  swallowed `--output-format json`. A reviewer's verdict contract caught that one. The
+  same shape on `codex-sol` — exit zero, output shape broken so no count can be read, and
+  no verdict contract behind it — would still be credited, because an absent count is
+  read as unknown rather than as zero. Never observed on codex, which has printed
+  `tokens used` on every run that reached the model; but the mechanism that erases a
+  count has been observed once, on another backend, so the remainder is real rather than
+  theoretical. Treating an absent count as a refusal for `codex-sol` alone would close
+  it, at the cost of not crediting a good run if codex ever changes that output.
 
 ## Pipeline run
 
