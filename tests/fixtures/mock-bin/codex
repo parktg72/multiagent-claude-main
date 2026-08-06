@@ -76,7 +76,7 @@ def main() -> int:
     if model == "gpt-5.6-sol":
         if pairs.get("-c") != 'model_reasoning_effort="high"' or pairs.get("--sandbox") != "danger-full-access" or "--output-schema" in pairs:
             return fail()
-    elif model == "gpt-5.6-terra":
+    elif model in {"gpt-5.6-terra", "gpt-5.6-luna"}:
         if pairs.get("-c") != 'model_reasoning_effort="max"' or pairs.get("--sandbox") != "read-only" or pairs.get("--output-schema") != "/input/review-verdict.schema.json":
             return fail()
     else:

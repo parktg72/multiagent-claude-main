@@ -4,13 +4,15 @@
 
 - Implementation, debugging, tests, scoped edits: `codex-sol`.
 - Independent validation, test evidence, regression analysis: `codex-terra`.
-- Cross-cutting impact and contested single verdicts: `kimi-reviewer`
-  (`opencode/kimi-k3`), only if its exact `max` variant preflight passes.
+- Cross-cutting impact and contested single verdicts: `codex-luna`
+  (`gpt-5.6-luna`, effort `max`). Unlike the other reviewers this pin has no
+  catalog probe behind it, only the argv contract.
 - Enumerative review whose answer is long — per-file audits, long findings lists,
-  bulk low-risk checks: `deepseek-reviewer` (`opencode/deepseek-v4-pro`), whose
-  output ceiling is 384k against Kimi's 131k at a quarter of the output price.
-  Its catalog also advertises `high`; the dispatcher never builds it. For both,
-  an absent pinned variant disables the route instead of downgrading it.
+  bulk low-risk checks: `deepseek-reviewer` (`opencode/deepseek-v4-flash`), whose
+  catalog entry carries a 1M context and a 384k output ceiling at $0.14/$0.28 per
+  million in and out. Its catalog also advertises `low` and `high`; the dispatcher
+  never builds them. For both, an absent pinned variant disables the route instead
+  of downgrading it.
 - Operations, multimodal, or third-party review: `agy`, only if AGY exact pin
   preflight passes.
 - Important design, ambiguity, security, or regression risk: `fable-advisor`, then
@@ -36,7 +38,7 @@ project-agent lookup is not an authority or permission boundary.
 Claude main: define task + neutral evidence packet
   -> human approval
   -> codex-sol producer (if edit needed)
-  -> codex-terra / AGY / Kimi / DeepSeek / Fable independently, each with neutral packet
+  -> codex-terra / codex-luna / AGY / DeepSeek / Fable independently, each with neutral packet
   -> Claude main reads raw outputs and decides
 ```
 

@@ -15,15 +15,14 @@ Worker pool is fixed:
 - `codex-terra` — `gpt-5.6-terra`, reasoning `max`; independent read-only review.
 - `agy` — `gemini-3.1-pro-high`, effort `high`; read-only third-party,
   operations, or multimodal review after local preflight proves exact pin.
-- `kimi-reviewer` — `opencode/kimi-k3`, variant `max`; read-only reviewer on the
-  OpenCode Zen provider. `opencode` is the provider ID; `opencode-zen` is only its
-  display name and is not a valid pin. `max` is the pinned variant by explicit human
-  decision: the opencode catalog defines no other variant for K3. Automatic variant
-  substitution stays forbidden; when the pinned variant is absent, preflight fails
-  closed.
-- `deepseek-reviewer` — `opencode/deepseek-v4-pro`, variant `max`; read-only
+- `codex-luna` — `gpt-5.6-luna`, reasoning `max`; read-only reviewer for
+  cross-cutting impact and contested single verdicts. The codex CLI exposes no
+  non-interactive model listing, so preflight verifies the argv contract only and the
+  pin rests on a human reading of the local model cache, which lists `max` among the
+  model's reasoning levels. Weaker evidence than the AGY and opencode pins carry.
+- `deepseek-reviewer` — `opencode/deepseek-v4-flash`, variant `max`; read-only
   enumerative reviewer on the same Zen provider. Unlike K3 this model's catalog
-  advertises a second variant, `high`, so it is the first pin where the
+  advertises two more variants, `low` and `high`, so it is the first pin where the
   unenforceable `--variant` limit in `ISSUES.md` is an active exposure rather than a
   latent one. `max` is an explicit human decision recorded on 2026-08-06.
 - `fable-advisor` — `claude-fable-5`; tools disabled, no session persistence,
@@ -47,7 +46,7 @@ Worker pool is fixed:
 6. Run producer before reviewers. Run reviewers independently: never place another
    reviewer's conclusion in their input. Main alone reads private raw results and
    synthesizes final decision.
-7. Require no-yes-man verdict schema from Terra, AGY, Kimi, DeepSeek, and Fable.
+7. Require no-yes-man verdict schema from Terra, Luna, AGY, DeepSeek, and Fable.
    Missing, malformed, or rubber-stamp verdict is failure, never success.
 8. Escalate important design, ambiguity, security, or regression risk to
    `fable-advisor`; main makes final decision.

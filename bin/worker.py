@@ -1157,8 +1157,15 @@ def build_inner_command(backend: dict[str, Any], binding: RuntimeBinding, review
         # "File not found: <message>". The message must precede --file. Note this is
         # the opposite of agy, whose prompt flag must come last — the ordering rule is
         # per CLI and only a live call proves it.
+        # `--pure` is deliberately absent from a run. Under it every model on every
+        # provider returns a server-side "Unexpected server error" — a free model and
+        # an unrelated OAuth provider fail identically, so it is not quota, billing,
+        # or one gateway. Dropping the flag makes the same call succeed. What it was
+        # bought, keeping host config and plugins out of a worker, is supplied by the
+        # sandbox's empty fake home, the same argument that removed `--bare` from the
+        # Claude advisor. The flag still works for `--version` and `models`, which
+        # need no session, and those probes keep it.
         return binding.prefix + [
-            "--pure",
             "run",
             "--model",
             model,
@@ -1570,9 +1577,12 @@ def cli_contracts(cache: PreflightCache | None = None) -> dict[str, dict[str, An
                 ("--print", "--model", "--effort", "--mode", "--sandbox", "--disable-slash-commands", "--add-dir", "--output-format", "--json-schema"),
             ),
         },
-        "kimi-reviewer": {
-            "ok": open_ok,
-            "missing": all_flags_present(open_help, ("--pure", "--model", "--variant", "--format", "--dir", "--file")),
+        "codex-luna": {
+            "ok": codex_ok,
+            "missing": all_flags_present(
+                codex_help,
+                ("--model", "--config", "--sandbox", "--cd", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "--ignore-rules", "--output-schema"),
+            ),
         },
         "deepseek-reviewer": {
             "ok": open_ok,
@@ -1634,7 +1644,7 @@ def backend_preflight(role: str, backend: dict[str, Any], cache: PreflightCache 
         if not isinstance(variants, dict) or backend.get("effort") not in variants:
             return BackendPreflight("unavailable_fail_closed", "pinned opencode variant absent from catalog; automatic variant substitution forbidden", startup, "unverified", "unverified", "variant_unavailable")
         return BackendPreflight("available_pending_auth", "exact opencode model and variant plus CLI contract verified; endpoint/auth unverified", startup, "unverified", "unverified", "variant_verified")
-    if role in {"codex-sol", "codex-terra"}:
+    if role in {"codex-sol", "codex-terra", "codex-luna"}:
         return BackendPreflight("endpoint_unverified", "exact argv contract verified; endpoint/auth intentionally uncalled", startup, "unverified", "unverified", "unverified")
     if role == "fable-advisor":
         return BackendPreflight("endpoint_unverified", "exact Fable argv contract verified; endpoint/auth intentionally uncalled", startup, "unverified", "unverified", "unverified")
@@ -1644,7 +1654,7 @@ def backend_preflight(role: str, backend: dict[str, Any], cache: PreflightCache 
 def invariant_issues(backends: dict[str, Any] | None = None) -> list[str]:
     data = backends if backends is not None else load_backends()
     workers = data.get("workers")
-    expected = {"codex-sol", "codex-terra", "agy", "kimi-reviewer", "deepseek-reviewer", "fable-advisor"}
+    expected = {"codex-sol", "codex-terra", "codex-luna", "agy", "deepseek-reviewer", "fable-advisor"}
     issues: list[str] = []
     orchestrator = data.get("orchestrator")
     if not isinstance(orchestrator, dict) or orchestrator.get("model_id") != "claude-opus-5" or orchestrator.get("effort") != "high":
@@ -1656,8 +1666,8 @@ def invariant_issues(backends: dict[str, Any] | None = None) -> list[str]:
         "codex-sol": ("codex", "codex", "gpt-5.6-sol", "high", "workspace-write"),
         "codex-terra": ("codex", "codex", "gpt-5.6-terra", "max", "read-only"),
         "agy": ("agy", "agy", "gemini-3.1-pro-high", "high", "read-only"),
-        "kimi-reviewer": ("opencode", "opencode", "opencode/kimi-k3", "max", "read-only"),
-        "deepseek-reviewer": ("opencode", "opencode", "opencode/deepseek-v4-pro", "max", "read-only"),
+        "codex-luna": ("codex", "codex", "gpt-5.6-luna", "max", "read-only"),
+        "deepseek-reviewer": ("opencode", "opencode", "opencode/deepseek-v4-flash", "max", "read-only"),
         "fable-advisor": ("claude", "claude", "claude-fable-5", None, "read-only"),
     }
     for role, (kind, command, model, effort, access) in pins.items():
@@ -1719,8 +1729,8 @@ def invariant_issues(backends: dict[str, Any] | None = None) -> list[str]:
             'codex exec --model gpt-5.6-sol -c model_reasoning_effort="high" --sandbox danger-full-access',
             'codex exec --model gpt-5.6-terra -c model_reasoning_effort="max" --sandbox read-only',
             "agy --model gemini-3.1-pro-high --effort high --mode plan --sandbox --disable-slash-commands --add-dir /input --output-format json ... --print <instruction>",
-            "opencode --pure run --model opencode/kimi-k3 --variant max",
-            "opencode --pure run --model opencode/deepseek-v4-pro --variant max",
+            'codex exec --model gpt-5.6-luna -c model_reasoning_effort="max" --sandbox read-only',
+            "opencode run --model opencode/deepseek-v4-flash --variant max",
             'claude --model claude-fable-5 --print --tools "" --no-session-persistence',
         )
         if any(item not in text for item in required_argv) or "--model opus" in text:
@@ -2025,7 +2035,7 @@ def preflight(arguments: argparse.Namespace) -> int:
         "auth": "unverified" if main_startup.status == "available" else "not_attempted",
         "model_acceptance": "local_candidate_only" if main_evidence else "candidate_unavailable",
     }
-    for role in ("codex-sol", "codex-terra", "agy", "kimi-reviewer", "deepseek-reviewer", "fable-advisor"):
+    for role in ("codex-sol", "codex-terra", "codex-luna", "agy", "deepseek-reviewer", "fable-advisor"):
         backend = backends.get(role, {}) if isinstance(backends, dict) else {}
         probe = backend_preflight(role, backend, cache)
         observation = live_observation(role, backend) if isinstance(backend, dict) and backend else None

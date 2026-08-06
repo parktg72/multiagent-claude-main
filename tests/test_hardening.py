@@ -426,12 +426,12 @@ class HardenedDispatcherTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         report = json.loads(result.stdout)
         self.assertEqual(report["cache_scope"], "single_invocation_only")
-        for role in ("claude-main", "codex-sol", "codex-terra", "agy", "kimi-reviewer", "deepseek-reviewer", "fable-advisor"):
+        for role in ("claude-main", "codex-sol", "codex-terra", "codex-luna", "agy", "deepseek-reviewer", "fable-advisor"):
             self.assertEqual(report["backends"][role]["sandbox_startup"]["status"], "available", role)
         self.assertEqual(report["backends"]["codex-sol"]["endpoint"], "unverified")
         self.assertEqual(report["backends"]["codex-sol"]["auth"], "unverified")
         self.assertEqual(report["backends"]["agy"]["model_acceptance"], "catalog_verified")
-        self.assertEqual(report["backends"]["kimi-reviewer"]["model_acceptance"], "variant_verified")
+        self.assertEqual(report["backends"]["codex-luna"]["model_acceptance"], "unverified")
         self.assertEqual(report["backends"]["deepseek-reviewer"]["model_acceptance"], "variant_verified")
 
     def test_startup_probe_failure_is_redacted_and_fail_closed(self) -> None:
@@ -879,29 +879,16 @@ class HardenedDispatcherTests(unittest.TestCase):
             with self.assertRaises(worker.GateError):
                 worker.add_auth_mount(worker.system_runtime_mounts(), worker.base_sandbox_environment(), {"kind": "codex"})
 
-    def test_kimi_command_refuses_any_variant_other_than_the_pinned_max(self) -> None:
-        # The pin is max by explicit decision; the dispatcher must still never build a
-        # command for a different variant, in either direction.
-        binding = worker.RuntimeBinding(prefix=["opencode"], mounts=[])
-        for effort in ("high", "low", "medium", None):
-            with self.subTest(effort=effort):
-                backend = {"kind": "opencode", "model": "opencode/kimi-k3", "effort": effort}
-                with self.assertRaises(worker.SchemaError):
-                    worker.build_inner_command(backend, binding, True, "/input/review-input.json")
-        pinned = {"kind": "opencode", "model": "opencode/kimi-k3", "effort": "max"}
-        command = worker.build_inner_command(pinned, binding, True, "/input/review-input.json")
-        self.assertIn(("--variant", "max"), list(zip(command, command[1:])))
-
     def test_deepseek_command_refuses_high_even_though_the_catalog_offers_it(self) -> None:
         # ISSUES #2: the CLI accepts any --variant silently, so the dispatcher is the
         # only thing standing between a config edit and a downgraded review.
         binding = worker.RuntimeBinding(prefix=["opencode"], mounts=[])
         for effort in ("high", "low", None):
             with self.subTest(effort=effort):
-                backend = {"kind": "opencode", "model": "opencode/deepseek-v4-pro", "effort": effort}
+                backend = {"kind": "opencode", "model": "opencode/deepseek-v4-flash", "effort": effort}
                 with self.assertRaises(worker.SchemaError):
                     worker.build_inner_command(backend, binding, True, "/input/review-input.json")
-        pinned = {"kind": "opencode", "model": "opencode/deepseek-v4-pro", "effort": "max"}
+        pinned = {"kind": "opencode", "model": "opencode/deepseek-v4-flash", "effort": "max"}
         command = worker.build_inner_command(pinned, binding, True, "/input/review-input.json")
         self.assertIn(("--variant", "max"), list(zip(command, command[1:])))
 
@@ -1007,25 +994,25 @@ class HardenedDispatcherTests(unittest.TestCase):
 
     def test_opencode_model_metadata_selects_by_id_from_a_multi_model_catalog(self) -> None:
         # The real CLI's --verbose catalog dump prints every model under a provider,
-        # each preceded by a bare `provider/model` line. Both pins are `max`, so a
+        # each preceded by a bare `provider/model` line. Ids share a prefix, so a
         # reader that returned the wrong model's metadata -- or simply the first JSON
         # object it found in the dump -- would still make every other test pass.
         catalog = "\n".join(
             [
-                "opencode/kimi-k3",
-                json.dumps({"id": "kimi-k3", "variants": {"max": {"reasoningEffort": "max"}}}),
-                "opencode/deepseek-v4-pro",
+                "opencode/deepseek-v4-flash-free",
+                json.dumps({"id": "deepseek-v4-flash-free", "variants": {"max": {"reasoningEffort": "max"}}}),
+                "opencode/deepseek-v4-flash",
                 json.dumps(
                     {
-                        "id": "deepseek-v4-pro",
+                        "id": "deepseek-v4-flash",
                         "variants": {"high": {"reasoningEffort": "high"}, "max": {"reasoningEffort": "max"}},
                     }
                 ),
             ]
         )
-        kimi = worker.opencode_model_metadata(catalog, "kimi-k3")
-        deepseek = worker.opencode_model_metadata(catalog, "deepseek-v4-pro")
-        self.assertEqual(set(kimi["variants"]), {"max"})
+        free = worker.opencode_model_metadata(catalog, "deepseek-v4-flash-free")
+        deepseek = worker.opencode_model_metadata(catalog, "deepseek-v4-flash")
+        self.assertEqual(set(free["variants"]), {"max"})
         self.assertEqual(set(deepseek["variants"]), {"high", "max"})
         self.assertIsNone(worker.opencode_model_metadata(catalog, "not-a-real-model"))
 
