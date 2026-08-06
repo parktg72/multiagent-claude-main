@@ -32,11 +32,12 @@ eleven was reachable from the mock suite.
   three such a call leaves no trace even in the figure they do report.
 - The opencode `--variant` pin is not enforceable: an invalid variant is accepted
   silently and no event states which variant ran. Open, upstream behaviour; exposure
-  became active on 2026-08-06. Affects `kimi-reviewer` (`opencode/kimi-k3`, variant
-  `max`) and `deepseek-reviewer` (`opencode/deepseek-v4-pro`, variant `max`) — K3's
-  catalog defines only `max`, so the gap was latent until `deepseek-reviewer` was
-  pinned to a model whose catalog also offers `high`. Recorded in
-  `kimi-live-test/task.md` and `ISSUES.md`.
+  became active on 2026-08-06. Affects `deepseek-reviewer` (`opencode/deepseek-v4-flash`,
+  variant `max`), the pool's only opencode worker since `kimi-reviewer` was replaced by
+  `codex-luna` that same day. K3's catalog defined only `max`, so the gap was latent
+  until `deepseek-reviewer` was pinned to a model whose catalog offers alternatives —
+  V4 Pro offers `high`, and V4 Flash, the pin it was moved to hours later, offers both
+  `low` and `high`. Recorded in `kimi-live-test/task.md` and `ISSUES.md`.
 
 ## Limits since closed
 
