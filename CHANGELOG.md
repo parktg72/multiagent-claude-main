@@ -5,7 +5,15 @@ stays short; this file records how the rules were arrived at and is read only wh
 someone wants that. Published commit history begins at a squashed root commit, so the
 work below predates what `git log` shows.
 
-## 2026-08-06 — repin to opencode Zen, a sixth worker, and a second exit-zero failure
+## 2026-08-06 — repin to opencode Zen, a sixth worker, and two lessons about exit codes
+
+The day's request was small: move the opencode reviewer to the Zen provider and let the
+pool use Kimi K3 or DeepSeek V4 Pro by role. Both landed. What made the day worth
+recording is that neither the repin nor the split is the interesting part — a live
+dispatch found an eleventh defect, that defect opened and closed an issue, and the fix
+for it was wrong the first time in a way only a second question exposed.
+
+### The provider that was not a provider
 
 `kimi-reviewer` moved from provider `opencode-go` to `opencode`. The provider's
 display name is "OpenCode Zen", but `opencode --pure models opencode-zen` answers
@@ -15,6 +23,13 @@ generalized from a role-named hardcode of provider and model id to deriving both
 from the configured `provider/model` pin, so the repin needed configuration rather
 than new branch logic, and the same generalization is what let the sixth worker be
 added as configuration too.
+
+The first answer to "does `opencode-zen` exist" was no, on the strength of one command
+returning `Provider not found`. It exists; `opencode --pure auth list` names it by
+display name and holds its credential. The right token was two commands away. This is
+the day's first instance of a pattern that repeats below.
+
+### A sixth worker, and a latent limit going live
 
 **`deepseek-reviewer`**, pinned to `opencode/deepseek-v4-pro` at variant `max`, joined
 the pool for enumerative review — per-file audits and long findings lists, where its
@@ -26,6 +41,8 @@ downgrade. Restricting opencode roles to single-variant models was considered an
 declined on the same date, so the gap is recorded as a decision rather than an
 oversight.
 
+### Defect 11: exit zero, nothing spent
+
 Live re-verification of both opencode reviewers turned up an eleventh defect,
 distinct from the ten below: a `kimi-reviewer` dispatch exited zero with
 `reason: "unknown"`, zero input and output tokens, cost 0, and no text part after 63s.
@@ -36,6 +53,58 @@ as a stand-in for success, after the `agy --print` defect below, and it is why
 `README.md` now says exit zero is necessary but not sufficient for a live
 observation, and that for a reviewer it is the verdict contract, not the exit code,
 that supplies the missing proof.
+
+### The exit code stopped being enough
+
+Kimi is a reviewer, which is the only reason defect 11 was caught. That prompted the
+obvious question about the one worker that is not: `codex-sol` is the only backend with
+`requires_no_yes_man: false`, so nothing stood between a zero-exit run and the
+`live_dispatch` record preflight reads as `observed_reachable`. Filed as issue #3.
+
+The fix was cheaper than the issue expected, because the evidence was already on disk.
+`finish_dispatch` now reads what the backend says it spent and withholds the observation
+on a reported zero. Replayed against all 25 saved runs, it flags exactly one — the
+defect-11 run — and no legitimate run. Issue #3 closed the day it opened.
+
+One thing this deliberately does not do: fail the dispatch. The exit code describes the
+child, the observation describes the evidence, and conflating them would make a producer
+round look broken when main can simply read the tree. An unreported count stays unknown
+rather than zero — five saved runs report nothing, and every one of them is a run that
+another gate had already failed.
+
+### The check that looked in one place
+
+The first version of that check covered two backends, on the strength of a grep for
+`tokens used` across saved stderr. That was the wrong place to look. Every one of the
+four backends reports, and no two report alike: codex prints the count on stderr,
+opencode carries per-step counts in its JSONL stdout, and agy and the Claude CLI each
+put a `usage` object in their single stdout JSON under different key names. The Claude
+CLI's `modelUsage` is the very field issue #1 is built on, which should have settled the
+question before a grep did. Absence of a string is not absence of a fact.
+
+It reached three documents and a public issue comment before a question caught it. The
+narrow lesson is about where usage lives; the broad one is that a negative finding needs
+the same evidence standard as a positive one, and a single grep is not that standard.
+
+### What the process cost, and what it caught
+
+Three live dispatches, about seventeen cents: `deepseek-reviewer` once, `kimi-reviewer`
+twice because the first attempt was defect 11 and cost nothing. Both reviewers returned
+substantive verdicts on a byte-identical packet — approve and conditional — and both
+independently found the same structural point, that the pin-format and variant
+guarantees live in different functions from the dispatch path.
+
+Re-testing those claims, as rule 10 requires, confirmed two and refuted one. The refuted
+one was a claim about cross-provider id collisions, closed by observing that the catalog
+probe is already provider-scoped.
+
+The whole-branch review then refuted a claim of main's own: main had reported that
+`dispatch()` never calls `backend_preflight`, having tested by searching the function's
+source text for the callee's name. It does call it, through `require_backend_ready`. A
+substring search cannot see an indirect call. That correction is in the task log, and it
+is the third time in one day that a confident negative turned out to be a shallow
+lookup — the same shape as the provider that was not a provider, and the usage that was
+not absent.
 
 ## 2026-08-05 — first live dispatch, and what it cost to get there
 
@@ -114,31 +183,3 @@ packet, which makes them a check on the orchestrator as much as on the workers.
 
 A model pin is not exclusive, and the opencode `--variant` pin is not enforceable. Both
 are stated in `ISSUES.md` with what would close them, and filed as issues #1 and #2.
-
-## 2026-08-06, later: the exit code stopped being enough
-
-Defect 11 was a run that exited zero having answered nothing — `reason: "unknown"`, zero
-tokens, no text part, sixty-three seconds. Kimi is a reviewer, so the verdict contract
-caught it. That prompted the obvious question about the one worker with no verdict
-contract: `codex-sol` is the only backend with `requires_no_yes_man: false`, so nothing
-stood between a zero-exit run and the `live_dispatch` record that preflight reads as
-`observed_reachable`. Filed as issue #3.
-
-The fix was cheaper than the issue expected, because the evidence was already on disk.
-`finish_dispatch` now reads what the backend says it spent and withholds the observation
-on a reported zero. Replayed against all 25 saved runs, it flags exactly one — the
-defect-11 run — and no legitimate run. Issue #3 closed the day it opened.
-
-The first version of that check covered two backends, on the strength of a grep for
-`tokens used` across saved stderr. That was the wrong place to look. Every one of the
-four backends reports, and no two report alike: codex prints the count on stderr,
-opencode carries per-step counts in its JSONL stdout, and agy and the Claude CLI each
-put a `usage` object in their single stdout JSON under different key names. The Claude
-CLI's `modelUsage` is the very field issue #1 is built on, which should have settled the
-question before a grep did. Absence of a string is not absence of a fact.
-
-One thing this deliberately does not do: fail the dispatch. The exit code describes the
-child, the observation describes the evidence, and conflating them would make a producer
-round look broken when main can simply read the tree. An unreported count stays unknown
-rather than zero — five saved runs report nothing, and every one of them is a run that
-another gate had already failed.
