@@ -3,8 +3,9 @@
 Index of the real provider runs kept under `tasks/`. Nothing here is tracked by git:
 `.gitignore` excludes `tasks/*`, so raw model output, verdicts, and approval journals
 stay on this machine only. Keep these records to compare against when a symptom
-reappears — every defect below was found by dispatching for real, and none of them
-was reachable from the mock suite.
+reappears. Nine of the eleven defects below were found by dispatching for real; the
+other two were caught reading a CLI's own help before anything was spent. None of the
+eleven was reachable from the mock suite.
 
 ## Defects found, and where the evidence lives
 
@@ -25,8 +26,10 @@ was reachable from the mock suite.
 ## Unresolved limits
 
 - A model pin is not exclusive. The Claude CLI reported one small internal
-  `claude-haiku-4-5` call beside the pinned model; other backends do not report
-  per-model usage at all, so the same may happen there unobserved.
+  `claude-haiku-4-5` call beside the pinned model. All four backends report what a run
+  spent in total, but only the Claude CLI breaks it down per model — and in that run the
+  top-level total excluded the auxiliary call rather than folding it in, so on the other
+  three such a call leaves no trace even in the figure they do report.
 - The opencode `--variant` pin is not enforceable: an invalid variant is accepted
   silently and no event states which variant ran. Open, upstream behaviour; exposure
   became active on 2026-08-06. Affects `kimi-reviewer` (`opencode/kimi-k3`, variant
@@ -34,16 +37,20 @@ was reachable from the mock suite.
   catalog defines only `max`, so the gap was latent until `deepseek-reviewer` was
   pinned to a model whose catalog also offers `high`. Recorded in
   `kimi-live-test/task.md` and `ISSUES.md`.
-Closed 2026-08-06: `codex-sol`'s live observation used to rest on the exit code alone,
-since it is the one worker with `requires_no_yes_man: false` and so has no verdict
-contract between a zero-exit run and `.runtime/live/codex-sol.json`. Defect 11 above
-proved a backend can exit zero having answered nothing. `finish_dispatch` now reads the
-count the backend reports — codex on stderr, opencode in its JSONL stream, agy and the
-Claude CLI in a `usage` object in their stdout JSON — and withholds the observation on a
-reported zero. Replayed against every run in this index, the check flags run
-20260806T042330 and nothing else. Five runs report no count at all; each is a run some
-other gate had already failed, including the defect-4 agy run, whose output was prose
-because `--print` had swallowed `--output-format json`.
+
+## Limits since closed
+
+- **`codex-sol`'s live observation rested on the exit code alone** — closed 2026-08-06,
+  filed and closed the same day as issue #3. It is the one worker with
+  `requires_no_yes_man: false`, so no verdict contract stood between a zero-exit run and
+  `.runtime/live/codex-sol.json`, and defect 11 proved a backend can exit zero having
+  answered nothing. `finish_dispatch` now reads the count the backend reports — codex on
+  stderr, opencode in its JSONL stream, agy and the Claude CLI in a `usage` object in
+  their stdout JSON — and withholds the observation on a reported zero. Replayed against
+  every run in this index it flags run 20260806T042330 and nothing else. Five runs report
+  no count at all; each is a run some other gate had already failed, including the
+  defect-4 agy run, whose output was prose because `--print` had swallowed
+  `--output-format json`.
 
 ## Pipeline run
 
@@ -52,6 +59,22 @@ byte-identical packets, escalation to the advisor, a second producer round, and 
 verification review. Two of the findings in it were defects in main's own evidence —
 a truncated test log and a diff spanning two rounds — each caught by a reviewer and
 each a correct rejection. See its `log.md` for the append-only trail.
+
+## Re-verification run
+
+`zen-repin-live` is the second multi-reviewer run and the reason there is an eleventh
+defect. Both opencode workers had been repinned to provider `opencode`, which changes
+`pin_digest` and so invalidates the observation recorded against the old pin — mock
+tests and preflight were green and proved nothing about the new one. Two reviewers
+received a byte-identical packet and returned approve and conditional; both
+independently reported that the pin-format and variant guarantees live in different
+functions from the dispatch path.
+
+Re-testing those claims, per rule 10, confirmed two and refuted one, and the subsequent
+whole-branch review refuted a third that main had made about main's own code. Its
+`log.md` carries the correction as an appended entry rather than an edit, which is what
+the append-only rule is for.
+
 ## All runs
 
 | Task | Role | Run | Outcome |
