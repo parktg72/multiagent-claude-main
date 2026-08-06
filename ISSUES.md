@@ -67,16 +67,19 @@ only model involved.
 
 ## 2. The opencode `--variant` pin is not enforceable
 
-**Status:** open, upstream behaviour; exposure became active on 2026-08-06
-**Affects:** `kimi-reviewer` (`opencode/kimi-k3`, variant `max`) and
-`deepseek-reviewer` (`opencode/deepseek-v4-pro`, variant `max`)
+**Status:** open, upstream behaviour; exposure became active on 2026-08-06 and widened
+the same day
+**Affects:** `deepseek-reviewer` (`opencode/deepseek-v4-flash`, variant `max`) — since
+2026-08-06 the pool's only opencode worker
 **Evidence:** `tasks/kimi-live-test/task.md` records the original probe under Known
 Limitation; the catalog reading that activated it is in
-`docs/superpowers/specs/2026-08-06-opencode-zen-reviewer-split-design.md`
+`docs/superpowers/specs/2026-08-06-opencode-zen-reviewer-split-design.md`, and the repin
+that widened it is in `CHANGELOG.md` under "`deepseek-reviewer` moved to V4 Flash"
 
-The two transcripts below name provider `opencode-go`, which is where the reviewer was
-pinned when they were captured. They are records of commands that really ran; leave the
-token alone rather than updating it to the current `opencode` pin.
+The two transcripts below name provider `opencode-go` and model `kimi-k3` — the pin the
+reviewer carried when they were captured, on a role that has since left the pool. They
+are records of commands that really ran; leave those tokens alone rather than updating
+them to the current `opencode/deepseek-v4-flash` pin.
 
 The model half of the pin is enforced: an unknown model id is rejected server-side.
 
@@ -96,13 +99,21 @@ opencode --pure run --model opencode-go/kimi-k3 --variant definitely-not-a-varia
 No event in the JSONL stream names the variant in effect, so the dispatcher cannot
 observe which reasoning effort actually ran, nor detect a silent downgrade.
 
-**Why it matters now.** It stopped being latent. When this was filed, the only pinned
-opencode model was K3, whose catalog defines exactly one variant, so the pinned value
-and any provider default coincided and the gap could not bite. On 2026-08-06 the pool
-gained `deepseek-reviewer`, pinned to `opencode/deepseek-v4-pro`, whose catalog
-advertises both `high` and `max`. A silent downgrade from `max` to `high` is now
-representable, would change the reasoning budget of a review verdict, and would leave
-no trace in anything the dispatcher captures.
+**Why it matters now.** It stopped being latent, and then widened. When this was filed,
+the only pinned opencode model was K3, whose catalog defines exactly one variant, so the
+pinned value and any provider default coincided and the gap could not bite. On 2026-08-06
+the pool gained `deepseek-reviewer` at `opencode/deepseek-v4-pro`, whose catalog
+advertises `high` beside `max`, and was repinned the same day to
+`opencode/deepseek-v4-flash`, which advertises both `low` and `high` beside `max`. Read
+back off `opencode --pure models opencode --verbose` on 2026-08-07: `deepseek-v4-flash`
+lists `high`, `low`, `max`; `deepseek-v4-pro` lists `high`, `max`; `kimi-k3` is absent
+from this provider entirely. A silent downgrade from `max` is now representable in two
+directions rather than one, would change the reasoning budget of a review verdict, and
+would leave no trace in anything the dispatcher captures.
+
+`kimi-reviewer` left the pool the same day, replaced by `codex-luna` on the codex
+backend, which this issue does not reach. So the exposure narrowed to a single worker and
+widened in variants at once, and the two changes must not be read as cancelling.
 
 The dispatcher, not the CLI, is what prevents it: `build_inner_command` raises
 `SchemaError` for any variant other than the literal `max`, independent of what
@@ -117,8 +128,10 @@ mismatch.
 The alternative this issue previously proposed — restrict the opencode roles to models
 whose catalog exposes a single variant — was **considered and declined by explicit human
 decision on 2026-08-06**, when `deepseek-reviewer` was pinned at `max` knowing the
-variant could not be verified. Recording the refusal keeps the gap deliberate rather
-than accidental, which is the same standard issue #1 applies to auxiliary model calls.
+variant could not be verified — and reaffirmed hours later when the repin to V4 Flash
+took the count of unverifiable alternatives from one to two rather than backing away.
+Recording the refusal keeps the gap deliberate rather than accidental, which is the same
+standard issue #1 applies to auxiliary model calls.
 
 **Interim rule.** Treat `variant_verified` in preflight as "the catalog lists this
 variant", never as "this variant ran". For `deepseek-reviewer` say the pinned model
