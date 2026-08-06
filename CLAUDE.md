@@ -58,8 +58,16 @@ Worker pool is fixed:
    rejection about main's work rather than the producer's.
 10. Re-test a reviewer's claim before acting on it. Verdicts have contained both
     confirmed defects and over-claims; treat every asserted fact as a hypothesis and
-    measure it directly.
-11. Approval binds the tuple task, role, write scope, and target. Restoring those
+    measure it directly. This binds main's own findings too: on 2026-08-06 main
+    reported that `dispatch` never calls `backend_preflight`, having searched the
+    function's source text for the callee's name, which cannot see the indirect call
+    that was there.
+11. Hold a negative to the same standard as a positive. "X does not exist", "Y does
+    not report that", "nothing calls this" are claims, and one command that came back
+    empty is not evidence for them. Three such claims failed on 2026-08-06 alone: a
+    provider that existed under another token, two backends that reported usage
+    somewhere the search did not look, and the call above. Say where you looked.
+12. Approval binds the tuple task, role, write scope, and target. Restoring those
     exact values lets a worker be dispatched again with no new human confirmation,
     which is intended for repeated rounds inside one task. Split tasks when a round
     must carry its own approval.
@@ -117,19 +125,12 @@ State of the harness as of 2026-08-06: all six workers have completed a real dis
 the producer-reviewer pipeline has run end to end across two rounds, and `bin/worker
 preflight` reports a `live_dispatch` observation per pin. Two limits stay open.
 
-A backend can report a failed request as a successful step. On 2026-08-06 an
-`opencode/kimi-k3` dispatch exited zero with `reason: "unknown"`, zero input and output
-tokens, and no text part; only the verdict contract caught it, and an identical
-re-dispatch succeeded. Exit zero is not evidence that a model answered. `finish_dispatch`
-now reads what the backend says it spent and withholds the live observation on a
-reported zero, which covers `codex-sol` — the one worker with no verdict contract behind
-it. All four backends report and no two report alike: codex on stderr, opencode in its
-JSONL stream, agy and the Claude CLI in a `usage` object in their stdout JSON under
-different key names. An absent count is treated as unknown, never as zero.
-
-Check where a backend actually reports before concluding it does not. The first pass at
-this grepped stderr alone and recorded that agy and the Claude CLI reported nothing —
-wrong for both, and the Claude CLI's `modelUsage` is the very evidence issue 1 rests on.
+A backend can report a failed request as a successful step, so exit zero is not evidence
+that a model answered. `finish_dispatch` withholds the live observation when a backend
+reports zero tokens spent, and a reviewer's verdict contract catches the same thing a
+second way; `codex-sol` has only the first. A dispatch that reports `live_observation`
+withheld did not credit its pin, whatever its exit code said. `README.md` has the
+mechanism and `CHANGELOG.md` the incident that produced it.
 
 ## Re-entry
 
