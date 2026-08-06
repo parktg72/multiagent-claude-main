@@ -5,6 +5,72 @@ stays short; this file records how the rules were arrived at and is read only wh
 someone wants that. Published commit history begins at a squashed root commit, so the
 work below predates what `git log` shows.
 
+## 2026-08-06 (later) — the Zen repin undone, and a flag that never reached a model
+
+Three changes, one branch. All three came out of verifying the harness on Linux, which
+was itself forced: `bwrap` has no macOS port, so `bin/worker` fails closed on darwin and
+the suite cannot run there at all. Under Ubuntu 24.04 aarch64 in a privileged container
+holding no credentials, `tests/run.sh` went fully green — the same suite that fails ten
+of fourteen on the host for one reason.
+
+### `--pure` never reached a model
+
+Every opencode run under `--pure` returned a server-side "Unexpected server error" with
+a distinct `ref`. The identical call without the flag succeeded and reported tokens. A
+free model failed and an unrelated OAuth provider failed the same way, which rules out
+quota, billing, and the OpenCode gateway alone.
+
+The mechanism is still unknown, and the obvious guess does not survive contact:
+`opencode --pure auth list` lists every credential under the same flag, so it is not
+simply hiding `auth.json`. The flag is kept where it demonstrably works and no session
+is involved — the `--version` startup probe and the `models <provider> --verbose`
+catalog probe, both of which return authenticated results on a signed-in host.
+
+What `--pure` was bought for on a run is already supplied by the sandbox's empty fake
+home. That is the same argument that removed `--bare` from the Claude advisor, arrived
+at twice independently before anyone noticed it was the same argument.
+
+The uncomfortable part is what this says about the section above. That section records
+live `--pure` dispatches returning schema-valid verdicts the same day. Both cannot be
+right, and this entry does not resolve it — the earlier record is left standing and the
+contradiction is filed rather than tidied away.
+
+### `kimi-reviewer` is gone; `codex-luna` takes the seat
+
+The repin to Zen recorded above moved K3 from `opencode-go` to `opencode`. K3 is not
+served by `opencode`. Live triangulation, all with `--pure` dropped so the runs could
+reach a model at all: `opencode/kimi-k2.6` answered, `opencode-go/kimi-k3` answered,
+`opencode/deepseek-v4-flash` answered, and `opencode/kimi-k3` alone returned the
+server-side refusal that #2 established is how an unknown model id fails. The Zen
+catalog offers `kimi-k2.5` and `kimi-k2.6`, never `kimi-k3`.
+
+So the repin broke the pin, and the catalog said so the whole time. Rather than move it
+back to `opencode-go`, the role was replaced: `codex-luna`, `gpt-5.6-luna` at reasoning
+`max`, read-only, mirroring `codex-terra`'s record in every other field.
+
+That trade is worth naming. The opencode and AGY roles carry a catalog probe that
+proves the pinned model exists before a dispatch. Codex has no non-interactive model
+listing, so `codex-luna` carries an argv contract and nothing else, and its pin rests on
+a human reading of the local model cache. Weaker evidence, stated rather than implied,
+in `README.md` and `_shared/routing.md` both.
+
+### `deepseek-reviewer` moved to V4 Flash
+
+Same 1M context, same 384k output ceiling, at $0.14/$0.28 per million against Pro's
+$1.74/$3.84. The variant exposure widens rather than closes: Pro advertised one other
+variant, Flash advertises `low` and `high`. `build_inner_command` still refuses to build
+anything but the pinned `max`, and the fixture now carries all three variants so it
+keeps proving the refusal instead of proving a smaller claim.
+
+### What the Linux run turned up on the side
+
+Two gaps, both filed rather than fixed here. A signed-out `agy` fails the catalog test
+instead of skipping it, because `probe_with_status` classifies "ran and refused" as
+`exit` and the skip set covers only `timeout` and `missing`; that failure is the one
+remaining red test. A signed-out `opencode` is worse — the probe returns `ok` with a
+smaller catalog, so an absent pin and an anonymous listing are indistinguishable, which
+is exactly the reading that made `variant_unavailable` look like drift.
+
 ## 2026-08-06 — repin to opencode Zen, a sixth worker, and three negatives that were not
 
 The day's request was small: move the opencode reviewer to the Zen provider and let the

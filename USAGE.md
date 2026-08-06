@@ -38,7 +38,7 @@ home directory gets you `-bash: bin/worker: No such file or directory` before th
 harness sees anything. Either `cd` into the repository first, or spell the binary out:
 
 ```sh
-/home/ptg/multiagent-claude-main/bin/worker approve --role kimi-reviewer \
+/home/ptg/multiagent-claude-main/bin/worker approve --role codex-luna \
   --task tasks/<name>/task.md --confirm
 ```
 
@@ -164,7 +164,7 @@ approval.
 | Implementation, debugging, scoped edits | `codex-sol` (the only writer) |
 | Independent validation, regression analysis | `codex-terra` |
 | Third-party perspective, operations, multimodal | `agy` |
-| Cross-cutting impact, one contested verdict | `kimi-reviewer` |
+| Cross-cutting impact, one contested verdict | `codex-luna` |
 | Per-file audits and long enumerative findings | `deepseek-reviewer` |
 | Design judgement, ambiguity, security risk | `fable-advisor` |
 

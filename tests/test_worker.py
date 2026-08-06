@@ -183,25 +183,25 @@ class DispatcherContractTests(unittest.TestCase):
         result = self.dispatch("agy")
         self.assertEqual(result.returncode, 0, result.stderr)
 
-    def test_kimi_strict_mock_happy_path_uses_max_without_agent(self) -> None:
-        self.write_task("kimi-reviewer", "none")
-        self.approve("kimi-reviewer")
-        result = self.dispatch("kimi-reviewer")
+    def test_luna_strict_mock_happy_path_pins_max_and_read_only(self) -> None:
+        self.write_task("codex-luna", "none")
+        self.approve("codex-luna")
+        result = self.dispatch("codex-luna")
         self.assertEqual(result.returncode, 0, result.stderr)
-        input_path = self.input_for("kimi-reviewer")
-        dry = self.call("dispatch", "--role", "kimi-reviewer", "--task", str(self.task), "--input", str(input_path), "--dry-run")
+        input_path = self.input_for("codex-luna")
+        dry = self.call("dispatch", "--role", "codex-luna", "--task", str(self.task), "--input", str(input_path), "--dry-run")
         self.assertEqual(dry.returncode, 0, dry.stderr)
         plan = json.loads(dry.stdout)
         command = plan["command"]
         pairs = list(zip(command, command[1:]))
-        self.assertIn(("--variant", "max"), pairs)
+        self.assertIn(("--model", "gpt-5.6-luna"), pairs)
+        self.assertIn(("-c", 'model_reasoning_effort="max"'), pairs)
+        self.assertIn(("--sandbox", "read-only"), pairs)
+        self.assertIn(("--output-schema", "/input/review-verdict.schema.json"), pairs)
         self.assertNotIn("high", command)
-        self.assertNotIn("--agent", command)
-        input_mount = next(mount for mount in plan["sandbox"]["mounts"] if mount["destination"] == "/input/review-input.json")
-        self.assertNotEqual(input_mount["source"], str(input_path))
-        # The packet is served from private runtime storage, never the original input path.
-        packets = (self.runtime / "packets").resolve()
-        self.assertEqual(Path(input_mount["source"]).resolve().parent, packets)
+        verdicts = list((self.task_dir / "workers" / "codex-luna" / "runs").glob("*/review-verdict.json"))
+        self.assertEqual(len(verdicts), 1)
+        self.assertEqual(json.loads(verdicts[0].read_text(encoding="utf-8"))["verdict"], "conditional")
 
     def test_deepseek_strict_mock_happy_path_uses_max(self) -> None:
         self.write_task("deepseek-reviewer", "none")
@@ -264,7 +264,7 @@ class DispatcherContractTests(unittest.TestCase):
         report = json.loads(result.stdout)
         self.assertEqual(report["model_calls"], 0)
         self.assertEqual(report["backends"]["agy"]["status"], "available_pending_auth")
-        self.assertEqual(report["backends"]["kimi-reviewer"]["status"], "available_pending_auth")
+        self.assertEqual(report["backends"]["codex-luna"]["status"], "endpoint_unverified")
         self.assertEqual(report["backends"]["deepseek-reviewer"]["status"], "available_pending_auth")
 
     def test_source_has_no_whole_root_bind_or_dynamic_evaluator(self) -> None:

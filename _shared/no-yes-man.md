@@ -1,6 +1,6 @@
 # No-Yes-Man Review Contract
 
-Applies to `codex-terra`, `agy`, `kimi-reviewer`, `deepseek-reviewer`,
+Applies to `codex-terra`, `codex-luna`, `agy`, `deepseek-reviewer`,
 `fable-advisor`, and every future validator.
 
 1. Input contains only question, requirements, diff, test evidence, and optional

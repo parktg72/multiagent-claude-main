@@ -49,18 +49,19 @@
       "roles": ["third-party-review", "multimodal", "operations-analysis"],
       "preflight": "agy models must contain exact full-line model token; CLI flags must all be present"
     },
-    "kimi-reviewer": {
-      "kind": "opencode",
-      "command": "opencode",
-      "model": "opencode/kimi-k3",
+    "codex-luna": {
+      "kind": "codex",
+      "command": "codex",
+      "model": "gpt-5.6-luna",
       "effort": "max",
       "access": "read-only",
+      "sandbox": "read-only",
       "timeout_s": 900,
       "requires_no_yes_man": true,
       "fallbacks": [],
       "fallback_policy": "forbid",
-      "roles": ["large-context-analysis", "impact-analysis", "independent-review"],
-      "preflight": "opencode Zen catalog must expose the pinned max variant; --agent is not authoritative; the dispatcher never swaps variants on its own"
+      "roles": ["impact-analysis", "contested-verdict", "independent-review"],
+      "preflight": "codex argv contract only; this backend has no catalog probe, so the exact pin is a human reading of the CLI model cache, never a dispatcher check"
     },
     "deepseek-reviewer": {
       "kind": "opencode",

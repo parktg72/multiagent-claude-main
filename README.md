@@ -11,7 +11,7 @@ only through `bin/worker`; no `claude-main` worker and no model fallback exist.
 | `codex-sol` | `codex exec --model gpt-5.6-sol -c model_reasoning_effort="high" --sandbox danger-full-access` | only scoped writer | argv verified; real dispatches applied producer edits on 2026-08-04 and 2026-08-05, the latter being the recorded observation |
 | `codex-terra` | `codex exec --model gpt-5.6-terra -c model_reasoning_effort="max" --sandbox read-only` | read-only reviewer | argv verified; real dispatches returned schema-valid verdicts on 2026-08-04 and 2026-08-05 |
 | `agy` | `agy --model gemini-3.1-pro-high --effort high --mode plan --sandbox --disable-slash-commands --add-dir /input --output-format json ... --print <instruction>` | read-only reviewer | argv and catalog verified; real dispatches returned schema-valid verdicts on 2026-08-04 and 2026-08-05, the latter being the recorded observation |
-| `kimi-reviewer` | `opencode run --model opencode/kimi-k3 --variant max --format json --dir /workspace <message> --file /input/...` | read-only reviewer | argv and catalog verified against provider `opencode`; a real dispatch returned a schema-valid verdict on 2026-08-06, after one transient zero-token failure the CLI reported as success; `--variant` is not enforceable |
+| `codex-luna` | `codex exec --model gpt-5.6-luna -c model_reasoning_effort="max" --sandbox read-only` | read-only reviewer | argv contract verified; the pin is a human reading of the codex model cache, which advertises `max` among its reasoning levels; no dispatch has run on this pin |
 | `deepseek-reviewer` | `opencode run --model opencode/deepseek-v4-flash --variant max --format json --dir /workspace <message> --file /input/...` | read-only reviewer | argv and catalog verified against provider `opencode`; a real dispatch returned a schema-valid verdict on 2026-08-06; `--variant` is not enforceable, and this is the first pin whose catalog also offers other variants, `low` and `high` |
 | `fable-advisor` | `claude --model claude-fable-5 --print --tools "" --no-session-persistence` | tools disabled advisor | argv verified; a real dispatch returned a schema-valid verdict on 2026-08-05 with no tool use |
 
@@ -20,12 +20,17 @@ No non-billable endpoint-acceptance resolver exists; local catalogs verify only
 advertised pins, so endpoint acceptance remains unverified until a separately approved
 paid call.
 
-Both opencode workers are pinned to `max` by explicit human decision, for different
-reasons. K3's catalog defines no other variant, so its pin cannot drift. DeepSeek V4
+The one opencode worker is pinned to `max` by explicit human decision. DeepSeek V4
 Flash's catalog also offers `low` and `high`, and `max` was chosen anyway, knowing the
-CLI cannot confirm which variant ran — recorded as a decision in `ISSUES.md` rather than left as an
-oversight. The dispatcher never swaps a variant on its own, and `build_inner_command`
-refuses to build any variant but `max` whatever the configuration says.
+CLI cannot confirm which variant ran — recorded as a decision in `ISSUES.md` rather than
+left as an oversight. The dispatcher never swaps a variant on its own, and
+`build_inner_command` refuses to build any variant but `max` whatever the configuration
+says.
+
+`codex-luna` has no catalog probe at all. The codex CLI exposes no non-interactive
+model listing, so preflight verifies its argv contract and nothing more, and the pin
+rests on a human reading of the local model cache. That is a weaker guarantee than the
+AGY and opencode roles carry, and it is stated here rather than implied.
 
 The opencode provider ID is `opencode`; its display name is "OpenCode Zen", and
 `opencode --pure models opencode-zen` answers `Provider not found`. Reading that as
