@@ -8,9 +8,9 @@ only through `bin/worker`; no `claude-main` worker and no model fallback exist.
 | Role | Dispatcher argv core | Filesystem role | Local status |
 |---|---|---|---|
 | Claude main | `claude --model claude-opus-5 --effort high --add-dir <root>` | interactive main | sandbox startup/local candidate verified; endpoint/auth unverified |
-| `codex-sol` | `codex exec --model gpt-5.6-sol -c model_reasoning_effort="high" --sandbox danger-full-access` | only scoped writer | argv verified; one real dispatch on this pin exited zero on 2026-08-04 |
+| `codex-sol` | `codex exec --model gpt-5.6-sol -c model_reasoning_effort="high" --sandbox danger-full-access` | only scoped writer | argv verified; real dispatches applied producer edits on 2026-08-04 and 2026-08-05, the latter being the recorded observation |
 | `codex-terra` | `codex exec --model gpt-5.6-terra -c model_reasoning_effort="max" --sandbox read-only` | read-only reviewer | argv verified; real dispatches returned schema-valid verdicts on 2026-08-04 and 2026-08-05 |
-| `agy` | `agy --model gemini-3.1-pro-high --effort high --mode plan --sandbox --disable-slash-commands --add-dir /input --output-format json ... --print <instruction>` | read-only reviewer | argv and catalog verified; a real dispatch returned a schema-valid verdict on 2026-08-04 |
+| `agy` | `agy --model gemini-3.1-pro-high --effort high --mode plan --sandbox --disable-slash-commands --add-dir /input --output-format json ... --print <instruction>` | read-only reviewer | argv and catalog verified; real dispatches returned schema-valid verdicts on 2026-08-04 and 2026-08-05, the latter being the recorded observation |
 | `kimi-reviewer` | `opencode --pure run --model opencode/kimi-k3 --variant max --format json --dir /workspace <message> --file /input/...` | read-only reviewer | argv and catalog verified against provider `opencode`; a real dispatch returned a schema-valid verdict on 2026-08-06, after one transient zero-token failure the CLI reported as success; `--variant` is not enforceable |
 | `deepseek-reviewer` | `opencode --pure run --model opencode/deepseek-v4-pro --variant max --format json --dir /workspace <message> --file /input/...` | read-only reviewer | argv and catalog verified against provider `opencode`; a real dispatch returned a schema-valid verdict on 2026-08-06; `--variant` is not enforceable, and this is the first pin whose catalog also offers `high` |
 | `fable-advisor` | `claude --model claude-fable-5 --print --tools "" --no-session-persistence` | tools disabled advisor | argv verified; a real dispatch returned a schema-valid verdict on 2026-08-05 with no tool use |
@@ -18,9 +18,15 @@ only through `bin/worker`; no `claude-main` worker and no model fallback exist.
 Claude local changelog names `claude-opus-5`; launcher pins that exact candidate.
 No non-billable endpoint-acceptance resolver exists; local catalogs verify only
 advertised pins, so endpoint acceptance remains unverified until a separately approved
-paid call. Kimi is pinned to `max` because the opencode catalog defines no other
-variant for K3; that pin is an explicit human decision, and the dispatcher still
-never swaps a variant on its own.
+paid call.
+
+Both opencode workers are pinned to `max` by explicit human decision, for different
+reasons. K3's catalog defines no other variant, so its pin cannot drift. DeepSeek V4
+Pro's catalog also offers `high`, and `max` was chosen anyway, knowing the CLI cannot
+confirm which variant ran — recorded as a decision in `ISSUES.md` rather than left as an
+oversight. The dispatcher never swaps a variant on its own, and `build_inner_command`
+refuses to build any variant but `max` whatever the configuration says.
+
 The opencode provider ID is `opencode`; its display name is "OpenCode Zen", and
 `opencode --pure models opencode-zen` answers `Provider not found`. Reading that as
 "there is no Zen provider" is the wrong inference — the provider exists under a
@@ -33,8 +39,9 @@ Known gaps between what is pinned and what can be proven are tracked in
 [#1 a model pin is not exclusive](https://github.com/parktg72/multiagent-claude-main/issues/1)
 and
 [#2 the opencode variant pin is not enforceable](https://github.com/parktg72/multiagent-claude-main/issues/2).
-[#3 codex-sol's live observation rested on the exit code alone](https://github.com/parktg72/multiagent-claude-main/issues/3)
-was opened and closed on 2026-08-06.
+A third,
+[#3 codex-sol's live observation rested on the exit code alone](https://github.com/parktg72/multiagent-claude-main/issues/3),
+was opened and closed on 2026-08-06; `CHANGELOG.md` has how it was found and fixed.
 
 ## Safe Start — No Model Calls
 
@@ -56,9 +63,18 @@ to recheck.
 
 Exit zero is necessary for this record but is not by itself proof that a model
 answered: a 2026-08-06 `opencode/kimi-k3` dispatch exited zero with zero tokens and no
-text part. For a reviewer the no-yes-man verdict contract is what turns exit zero into
-that proof, since a run failing it never reaches `record_live_observation`; `codex-sol`
-has `requires_no_yes_man` false and no equivalent catcher.
+text part. Two gates stand behind it. For a reviewer the no-yes-man verdict contract
+supplies the missing proof, since a run failing it never reaches
+`record_live_observation`. For every backend, `finish_dispatch` reads the token count
+the backend reports and withholds the observation on a reported zero — which is what
+mattered for `codex-sol`, the one worker with `requires_no_yes_man` false and therefore
+no verdict contract behind it.
+
+All four backends report a count, and no two report alike: codex prints it on stderr,
+opencode carries per-step counts in its JSONL stdout, and agy and the Claude CLI each
+put a `usage` object in their stdout JSON under different key names. An absent count is
+treated as unknown, never as zero, so a backend that stops reporting does not read as
+one that answered nothing.
 
 `preflight` uses local CLI help/catalog/cache inspection and a non-model Bubblewrap
 filesystem probe. Every CLI also runs its isolated-network sandbox `--version` startup
@@ -241,10 +257,17 @@ Treat a backend as usable only after one real dispatch, and read `live_dispatch`
 whether that has happened on the current pin. An observation is not earned by the exit
 code alone: `finish_dispatch` reads what the backend reports it spent and withholds the
 record on a reported zero, which is what a run that answers nothing looks like. Two
-limits stay unresolved and are recorded rather than papered over: a model pin is not
-exclusive — the Claude CLI reported one small internal `claude-haiku-4-5` call beside
-the pinned model, and other backends do not report per-model usage at all — and the
-opencode `--variant` pin is not enforceable, since an invalid variant is accepted
+limits stay unresolved and are recorded rather than papered over.
+
+A model pin is not exclusive. The Claude CLI reported one small internal
+`claude-haiku-4-5` call beside the pinned model. All four backends report what a run
+spent in total, but only the Claude CLI breaks that total down **per model**, so on the
+other three an equivalent auxiliary call would leave no trace in anything the dispatcher
+captures. The gap is the breakdown, not the reporting — a distinction worth stating,
+because a first pass at the token check read "no per-model usage" as "no usage" and
+covered half the backends it should have.
+
+The opencode `--variant` pin is not enforceable, since an invalid variant is accepted
 silently and no event states what ran.
 
 One suite check is not hermetic: the AGY catalog test runs the real `agy models`
