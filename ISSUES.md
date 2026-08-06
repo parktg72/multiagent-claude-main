@@ -32,10 +32,17 @@ claude-haiku-4-5-20251001: in=1005   out=15     $0.0011   <- CLI-internal call
 ```
 
 The auxiliary call is small and appears to be CLI housekeeping, but the harness neither
-requested nor authorized it. The worse part is the blind spot: the Claude CLI reports
-per-model usage, so this was visible. codex, agy, and opencode do not report it at all,
-so an equivalent internal call on those backends would leave no trace in anything the
-dispatcher captures.
+requested nor authorized it. The worse part is the blind spot, and it is narrower than
+"they report nothing" — measured 2026-08-06, all four backends report what a run spent:
+codex prints a count on stderr, opencode carries per-step counts in its JSONL, and agy
+and the Claude CLI each put a `usage` object in their stdout JSON. Only the Claude CLI
+breaks that down **per model**, which is the sole reason the call above was visible.
+
+Worse still, the breakdown is not merely a convenience. In that same run the top-level
+`usage` reported `output_tokens: 7676`, while the per-model figures summed to 7691 — the
+auxiliary call is excluded from the total, not folded into it. So on a backend that
+reports only a total, an equivalent internal call would leave no trace even in the number
+it does report.
 
 **Why it matters.** An approval authorizes a worker whose identity is stated as an exact
 model. If a second model participates, the approval covered something narrower than what
@@ -43,9 +50,15 @@ ran. For a review verdict this is minor; for a change of policy or a security ju
 the provenance claim is weaker than the record implies.
 
 **What would resolve it.** Any of: a provider flag that forbids auxiliary model calls; a
-per-run usage report from every CLI so the dispatcher can assert a single model
-participated and fail closed otherwise; or an explicit statement in the approval record
-that auxiliary calls are permitted, which at least makes the gap deliberate.
+**per-model** usage breakdown from every CLI, not just a per-run total, so the dispatcher
+can assert a single model participated and fail closed otherwise; or an explicit
+statement in the approval record that auxiliary calls are permitted, which at least makes
+the gap deliberate.
+
+The middle option is closer than it was. `reported_token_total` already reads all four
+backends' per-run figures for a different purpose — withholding a live observation when a
+run spent nothing. What it cannot do is attribute those figures, and on three of the four
+there is nothing to attribute them from.
 
 **Interim rule.** Say the pinned model performed the reviewed work. Do not say it was the
 only model involved.
@@ -60,6 +73,10 @@ only model involved.
 **Evidence:** `tasks/kimi-live-test/task.md` records the original probe under Known
 Limitation; the catalog reading that activated it is in
 `docs/superpowers/specs/2026-08-06-opencode-zen-reviewer-split-design.md`
+
+The two transcripts below name provider `opencode-go`, which is where the reviewer was
+pinned when they were captured. They are records of commands that really ran; leave the
+token alone rather than updating it to the current `opencode` pin.
 
 The model half of the pin is enforced: an unknown model id is rejected server-side.
 
