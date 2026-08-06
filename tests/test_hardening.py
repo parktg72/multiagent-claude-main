@@ -928,10 +928,31 @@ class HardenedDispatcherTests(unittest.TestCase):
         )
         self.assertEqual(worker.reported_token_total("opencode", silent, b""), 0)
 
-        # Unknown must never read as zero, or a silent backend would be treated as failed.
-        for kind in ("agy", "claude"):
-            with self.subTest(kind=kind):
-                self.assertIsNone(worker.reported_token_total(kind, answered, codex_stderr))
+        # agy and the Claude CLI each put a usage object in their single stdout JSON,
+        # under different key names. Shapes copied from agy run 20260805T004243 and
+        # fable-advisor run 20260805T005226.
+        agy_stdout = (
+            b'{"status":"SUCCESS","response":"...","usage":{"input_tokens":24572,'
+            b'"output_tokens":6382,"thinking_tokens":5795,"cache_read_tokens":16287,"total_tokens":30954}}'
+        )
+        # cache_read is work the provider skipped, so it is not counted: 24572+6382+5795.
+        self.assertEqual(worker.reported_token_total("agy", agy_stdout, b""), 36749)
+
+        claude_stdout = (
+            b'{"type":"result","total_cost_usd":0.57998,"usage":{"input_tokens":4,'
+            b'"cache_creation_input_tokens":9090,"cache_read_input_tokens":12183,"output_tokens":7676}}'
+        )
+        self.assertEqual(worker.reported_token_total("claude", claude_stdout, b""), 16770)
+
+        # Unknown must never read as zero, or a backend that stopped reporting — or one
+        # whose output shape broke, as agy's did in defect 4 — would read as one that
+        # answered nothing. Every gate has to fail in its own direction.
+        self.assertIsNone(worker.reported_token_total("agy", b"plain prose, not JSON\n", b""))
+        self.assertIsNone(worker.reported_token_total("claude", b'{"type":"result"}', b""))
+        self.assertIsNone(worker.reported_token_total("unknown-kind", agy_stdout, codex_stderr))
+
+        # A model that consumed a prompt and produced nothing is still zero.
+        self.assertEqual(worker.reported_token_total("claude", b'{"usage":{"input_tokens":0,"output_tokens":0}}', b""), 0)
 
     def test_zero_reported_tokens_withholds_the_live_observation(self) -> None:
         # ISSUES #3: codex-sol has no verdict contract, so without this the exit code

@@ -1770,11 +1770,16 @@ def reported_token_total(kind: str, stdout: bytes, stderr: bytes) -> int | None:
     contract catches that, but `codex-sol` has none, so its live observation would
     otherwise rest on the exit code alone.
 
-    Measured 2026-08-06 against saved runs: codex prints `tokens used` and the count on
-    the next line of stderr, and opencode carries per-step counts in its JSONL stdout.
-    agy and the Claude CLI report neither in anything the dispatcher captures, so for
-    them this returns None and the caller has nothing to check. None means unknown; it
-    never means zero.
+    Measured 2026-08-06 against every saved run. Each of the four backends reports, and
+    no two report alike: codex prints `tokens used` and the count on the next line of
+    stderr, opencode carries per-step counts in its JSONL stdout, and agy and the Claude
+    CLI each put a `usage` object in their single stdout JSON under different key names.
+    A first pass at this grepped only stderr and concluded agy and Claude reported
+    nothing, which was wrong — the Claude CLI's `modelUsage` is the very evidence issue 1
+    is built on.
+
+    None means unknown, never zero: a backend that stops reporting must not read as a
+    backend that answered nothing.
     """
     if kind == "codex":
         text = stderr.decode("utf-8", errors="replace")
@@ -1798,6 +1803,18 @@ def reported_token_total(kind: str, stdout: bytes, stderr: bytes) -> int | None:
             step = sum(value for key, value in counts.items() if key in {"input", "output", "reasoning"} and isinstance(value, int))
             total = step if total is None else total + step
         return total
+    if kind in {"agy", "claude"}:
+        try:
+            payload = json.loads(stdout.decode("utf-8", errors="replace"))
+        except json.JSONDecodeError:
+            return None
+        usage = payload.get("usage") if isinstance(payload, dict) else None
+        if not isinstance(usage, dict):
+            return None
+        # Count only what the model consumed and produced. A cache read is work the
+        # provider skipped, so it must not vouch for a turn that generated nothing.
+        counted = {"input_tokens", "output_tokens", "thinking_tokens", "cache_creation_input_tokens"}
+        return sum(value for key, value in usage.items() if key in counted and isinstance(value, int))
     return None
 
 
