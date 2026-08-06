@@ -176,6 +176,29 @@ Which is the argument for the rule. Both findings came from re-asking questions 
 already been answered, and the second one is a hole in a fix that had been reviewed,
 tested, merged, and used to close an issue the same day.
 
+### A fix without a test is a fix that can leave
+
+One more gap surfaced after all of that, and not from an audit. The final review had
+found that the opencode provider regex `[a-z0-9._-]{1,64}` accepted `--verbose`, `-rf`,
+`.`, and `..`, so a config file could put an option where the probe expects a provider
+name. The narrowing to `[a-z0-9][a-z0-9._-]{0,63}` shipped in the fix wave. No test went
+with it: the reviewer had found the problem by reading the regex, and the fix was two
+characters, and two characters do not feel like they need one.
+
+Three passes then went over that area — the task review, the whole-branch review, and
+the rule 11 audit — and none asked what the test file covered. It came up while reading
+a commit's test diff hours later, for an unrelated reason.
+
+The test now reverts to the old regex to prove itself: six of its seven rejected
+providers pass under the pre-fix pattern, and only `OpenCode` was already refused, by
+the character class rather than the anchor. It also asserts a valid provider still gets
+through, so the check cannot quietly become a blanket refusal, and pins the 64-character
+ceiling that the narrowing preserved but nothing had stated.
+
+The rule this suggests is narrower than rule 11 and sits beside it: a defect found by
+reading is still a defect, and it earns a test the same as one found by failing. What
+keeps a fix fixed is not the fix.
+
 ## 2026-08-05 — first live dispatch, and what it cost to get there
 
 Before this date the harness had a passing test suite and had never run. Every backend
