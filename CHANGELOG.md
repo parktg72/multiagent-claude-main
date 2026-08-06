@@ -106,6 +106,37 @@ is the third time in one day that a confident negative turned out to be a shallo
 lookup — the same shape as the provider that was not a provider, and the usage that was
 not absent.
 
+### The reconciliation pass, which was not cosmetic
+
+The work above landed as a dozen commits that each edited whatever document was in
+reach. A pass over `README.md`, `USAGE.md`, `CLAUDE.md`, `ISSUES.md`, and
+`tasks/INDEX.md` afterwards was expected to be tidying. It found defects instead.
+
+`README.md` contradicted itself: one paragraph still said `codex-sol` had nothing behind
+its exit code while another described the token gate that had become exactly that.
+`tasks/INDEX.md` filed a closed limit inside its Unresolved list, with no blank line to
+separate them, and its header credited live dispatch with all eleven defects when two
+were caught reading a CLI's help. Two `README.md` status cells named a dispatch date
+that was not the one the live observation records. This entry itself had been appended
+below the 2026-08-05 section, breaking the file's newest-first order.
+
+The worst of it was one sentence. Issue 1 said codex, agy, and opencode "do not report
+it at all", meaning per-model usage; read quickly it says they report nothing, and that
+is precisely the reading that made the first token gate cover two backends instead of
+four. The same phrasing had propagated to three files. A document that misleads its own
+author is not a documentation problem — it had already caused a coding error hours
+earlier, and correcting it turned up the sharper fact that a top-level usage total
+excludes the auxiliary call rather than folding it in.
+
+`CLAUDE.md` went the other way and got shorter. It is loaded every session, so it holds
+rules and points elsewhere for history; the day's edits had it accumulating thirteen
+lines of narrative this file already tells in full. What survived became rule 11: hold a
+negative to the same standard as a positive, and say where you looked. Three negatives
+failed in one day, which is enough to make it a rule rather than a note.
+
+The GitHub mirrors of issues #1 and #2 were rewritten to match, since `CLAUDE.md` claims
+that mirror relationship and a merge is the moment a stale mirror becomes public.
+
 ## 2026-08-05 — first live dispatch, and what it cost to get there
 
 Before this date the harness had a passing test suite and had never run. Every backend
