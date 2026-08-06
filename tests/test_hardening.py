@@ -1044,6 +1044,37 @@ class HardenedDispatcherTests(unittest.TestCase):
         self.assertEqual(probe.model_acceptance, "model_unavailable")
         self.assertIn("provider/model", probe.detail)
 
+    def test_opencode_provider_token_may_not_look_like_a_command_line_option(self) -> None:
+        # The provider is read from config and placed straight into a subprocess argv
+        # (`opencode --pure models <provider> --verbose`). No shell evaluates it, but a
+        # config file must not be able to put an option there: `--verbose/x` once
+        # produced the argv ['opencode','--pure','models','--verbose','--verbose'].
+        startup = worker.StartupProbe("available", "test stub")
+        contracts = {"kimi-reviewer": {"ok": True, "missing": []}}
+
+        def probe(model: str, catalog: str = "") -> worker.BackendPreflight:
+            with mock.patch.object(worker, "runtime_startup_probe", return_value=startup), \
+                 mock.patch.object(worker, "cli_contracts", return_value=contracts), \
+                 mock.patch.object(worker, "cached_local_probe", return_value=(True, catalog)):
+                return worker.backend_preflight(
+                    "kimi-reviewer",
+                    {"kind": "opencode", "command": "opencode", "model": model, "effort": "max"},
+                )
+
+        for provider in ("--verbose", "-rf", ".", "..", "-", "_opencode", "OpenCode"):
+            with self.subTest(provider=provider):
+                result = probe(f"{provider}/kimi-k3")
+                self.assertEqual(result.status, "unavailable_fail_closed")
+                self.assertEqual(result.model_acceptance, "model_unavailable")
+
+        # A real provider still gets past the format check and on to the catalog.
+        catalog = json.dumps({"id": "kimi-k3", "variants": {"max": {"reasoningEffort": "max"}}})
+        allowed = probe("opencode/kimi-k3", catalog)
+        self.assertEqual(allowed.model_acceptance, "variant_verified")
+        # 64 characters is the ceiling: one leading alphanumeric plus 63 more.
+        self.assertEqual(probe(f"{'a' * 64}/kimi-k3", catalog).model_acceptance, "variant_verified")
+        self.assertEqual(probe(f"{'a' * 65}/kimi-k3", catalog).model_acceptance, "model_unavailable")
+
     def test_runtime_override_is_refused_outside_fixture_test_mode(self) -> None:
         # Production must never relocate the authoritative approval journal.
         partial_modes = (
