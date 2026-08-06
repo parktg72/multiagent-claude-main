@@ -38,9 +38,12 @@ Closed 2026-08-06: `codex-sol`'s live observation used to rest on the exit code 
 since it is the one worker with `requires_no_yes_man: false` and so has no verdict
 contract between a zero-exit run and `.runtime/live/codex-sol.json`. Defect 11 above
 proved a backend can exit zero having answered nothing. `finish_dispatch` now reads the
-count the backend reports — codex on stderr, opencode in its stream — and withholds the
-observation on a reported zero. Replayed against every run in this index, the check
-flags run 20260806T042330 and nothing else.
+count the backend reports — codex on stderr, opencode in its JSONL stream, agy and the
+Claude CLI in a `usage` object in their stdout JSON — and withholds the observation on a
+reported zero. Replayed against every run in this index, the check flags run
+20260806T042330 and nothing else. Five runs report no count at all; each is a run some
+other gate had already failed, including the defect-4 agy run, whose output was prose
+because `--print` had swallowed `--output-format json`.
 
 ## Pipeline run
 

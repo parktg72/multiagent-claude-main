@@ -123,9 +123,13 @@ tokens, and no text part; only the verdict contract caught it, and an identical
 re-dispatch succeeded. Exit zero is not evidence that a model answered. `finish_dispatch`
 now reads what the backend says it spent and withholds the live observation on a
 reported zero, which covers `codex-sol` — the one worker with no verdict contract behind
-it. The check is only as good as what a backend reports: codex prints a count on stderr
-and opencode carries one in its stream, while agy and the Claude CLI report neither, and
-an unreported count is treated as unknown rather than as zero.
+it. All four backends report and no two report alike: codex on stderr, opencode in its
+JSONL stream, agy and the Claude CLI in a `usage` object in their stdout JSON under
+different key names. An absent count is treated as unknown, never as zero.
+
+Check where a backend actually reports before concluding it does not. The first pass at
+this grepped stderr alone and recorded that agy and the Claude CLI reported nothing —
+wrong for both, and the Claude CLI's `modelUsage` is the very evidence issue 1 rests on.
 
 ## Re-entry
 
