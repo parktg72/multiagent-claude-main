@@ -394,6 +394,59 @@ class HardenedDispatcherTests(unittest.TestCase):
         }
         self.assertEqual(worker.validate_verdict(verdict), verdict)
 
+    def base_verdict(self) -> dict[str, object]:
+        return {
+            "verdict": "conditional",
+            "evidence": ["Integration fixture identified the source file and failing command."],
+            "unverified_claims": ["The remote provider acceptance remains unverified."],
+            "risks": [
+                {
+                    "failure_mode": "Unknown ABI value can select an incompatible native runtime library.",
+                    "trigger": "A host upgrade changes the ABI value without rebuilding the package.",
+                    "impact": "Startup fails before review output can be generated for the task.",
+                    "evidence_or_locator": "The startup probe reproduces the version command in the isolated sandbox.",
+                    "mitigation": "Pin a compatible runtime package and rerun the isolated startup probe.",
+                }
+            ],
+            "summary": "",
+            "recommendations": [],
+        }
+
+    def test_verdict_refuses_unassigned_private_use_and_surrogate_codepoints(self) -> None:
+        # A live gpt-5.6-luna review returned a schema-valid verdict whose risk trigger
+        # ended in U+5FFFF, a Unicode noncharacter, with the model's own reasoning
+        # spliced into the sentence before it. Shape validation and substantive_text
+        # both passed it.
+        cases = {
+            "unassigned noncharacter": "\U0005ffff",
+            "private use": "\ue000",
+            "surrogate": "\ud800",
+        }
+        for label, character in cases.items():
+            with self.subTest(label=label):
+                verdict = self.base_verdict()
+                verdict["risks"][0]["trigger"] = (
+                    "A host upgrade changes the ABI value without rebuilding." + character
+                )
+                with self.assertRaises(worker.SchemaError) as caught:
+                    worker.validate_verdict(verdict)
+                self.assertIn("verdict.risks[0].trigger", str(caught.exception))
+        nested = self.base_verdict()
+        nested["evidence"] = ["Locator names the failing command.\U0005ffff"]
+        with self.assertRaises(worker.SchemaError) as caught:
+            worker.validate_verdict(nested)
+        self.assertIn("verdict.evidence[0]", str(caught.exception))
+
+    def test_verdict_keeps_ordinary_text_that_is_not_ascii(self) -> None:
+        # The guard must not reach past its target. Cc is deliberately excluded, and
+        # assigned non-Latin script, emoji, and punctuation are ordinary review prose.
+        verdict = self.base_verdict()
+        verdict["risks"][0]["mitigation"] = (
+            "\ud55c\uae00 \u6f22\u5b57 \U0001f642 \u2014 pin a compatible runtime\n\tand rerun the isolated startup probe."
+        )
+        verdict["summary"] = "Caf\u00e9 build \u2014 rerun after pinning."
+        self.assertEqual(worker.validate_verdict(verdict), verdict)
+
     def test_invariant_rejects_unknown_schema_validation_keyword(self) -> None:
         schema_path = ROOT / "_shared" / "schemas" / "review-input.schema.json"
         original = schema_path.read_text(encoding="utf-8")

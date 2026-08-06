@@ -25,6 +25,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import unicodedata
 from datetime import datetime, timezone
 from typing import Any, Iterable
 
@@ -669,8 +670,46 @@ def substantive_text(value: str, field_name: str) -> None:
         raise SchemaError(f"risk {field_name} is generic or insufficiently concrete")
 
 
+UNUSABLE_CODEPOINT_CATEGORIES = {"Cn", "Co", "Cs"}
+
+
+def reject_unusable_codepoints(value: Any, location: str) -> None:
+    """Refuse unassigned, private-use, and surrogate codepoints in a verdict.
+
+    A live `gpt-5.6-luna` review returned a schema-valid verdict whose risk trigger
+    carried the model's own reasoning and ended in U+5FFFF. `--output-schema` checks
+    shape, and `substantive_text` checks length and token variety, so nothing looked
+    inside the string and the contaminated verdict was accepted.
+
+    This closes the detectable half. The leaked prose itself is ordinary English and
+    no rule that caught it would spare legitimate review text, so it stays uncaught
+    by deliberate decision rather than oversight.
+
+    `Cc` is excluded: newlines and tabs are legitimate in a review. The `Cn` half
+    depends on the local `unicodedata` version, since a codepoint assigned in a newer
+    Unicode reads as unassigned on an older table. The drift direction is toward
+    rejection, which is the safe one for a gate. The observed U+5FFFF is a Unicode
+    noncharacter, permanently unassigned by guarantee, so that case does not drift.
+    """
+    if isinstance(value, str):
+        for index, character in enumerate(value):
+            if unicodedata.category(character) in UNUSABLE_CODEPOINT_CATEGORIES:
+                raise SchemaError(
+                    f"{location} carries an unusable codepoint U+{ord(character):04X} at offset {index}"
+                )
+        return
+    if isinstance(value, dict):
+        for key, item in value.items():
+            reject_unusable_codepoints(item, f"{location}.{key}")
+        return
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            reject_unusable_codepoints(item, f"{location}[{index}]")
+
+
 def validate_verdict(value: dict[str, Any]) -> dict[str, Any]:
     validate_against_schema(value, REVIEW_VERDICT_SCHEMA)
+    reject_unusable_codepoints(value, "verdict")
     if value["verdict"] == "approve" and not value["evidence"]:
         raise SchemaError("approve requires evidence")
     for risk in value["risks"]:
