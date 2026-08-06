@@ -905,6 +905,30 @@ class HardenedDispatcherTests(unittest.TestCase):
         command = worker.build_inner_command(pinned, binding, True, "/input/review-input.json")
         self.assertIn(("--variant", "max"), list(zip(command, command[1:])))
 
+    def test_opencode_model_metadata_selects_by_id_from_a_multi_model_catalog(self) -> None:
+        # The real CLI's --verbose catalog dump prints every model under a provider,
+        # each preceded by a bare `provider/model` line. Both pins are `max`, so a
+        # reader that returned the wrong model's metadata -- or simply the first JSON
+        # object it found in the dump -- would still make every other test pass.
+        catalog = "\n".join(
+            [
+                "opencode/kimi-k3",
+                json.dumps({"id": "kimi-k3", "variants": {"max": {"reasoningEffort": "max"}}}),
+                "opencode/deepseek-v4-pro",
+                json.dumps(
+                    {
+                        "id": "deepseek-v4-pro",
+                        "variants": {"high": {"reasoningEffort": "high"}, "max": {"reasoningEffort": "max"}},
+                    }
+                ),
+            ]
+        )
+        kimi = worker.opencode_model_metadata(catalog, "kimi-k3")
+        deepseek = worker.opencode_model_metadata(catalog, "deepseek-v4-pro")
+        self.assertEqual(set(kimi["variants"]), {"max"})
+        self.assertEqual(set(deepseek["variants"]), {"high", "max"})
+        self.assertIsNone(worker.opencode_model_metadata(catalog, "not-a-real-model"))
+
     def test_opencode_preflight_fails_closed_on_a_pin_without_a_provider_prefix(self) -> None:
         # A bare model id would make the dispatcher probe an empty provider. It must
         # refuse rather than guess which provider was meant.
