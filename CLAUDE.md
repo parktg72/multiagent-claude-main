@@ -71,6 +71,12 @@ Worker pool is fixed:
     exact values lets a worker be dispatched again with no new human confirmation,
     which is intended for repeated rounds inside one task. Split tasks when a round
     must carry its own approval.
+13. Keep tooling setup off the feature branch. Scratch directories, ignore rules,
+    and anything else the workflow needs rather than the change needs go in their
+    own commit before the branch starts. `41fd879` is what this looks like when it
+    is missed: a `.gitignore` entry for the subagent workspace landed third in a
+    nine-commit repin branch, and by the time it was noticed it sat under sixteen
+    merges and was not worth rewriting.
 
 ## Invocation Gate
 
