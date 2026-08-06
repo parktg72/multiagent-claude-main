@@ -130,9 +130,11 @@ preflight` reports a `live_dispatch` observation per pin. Two limits stay open.
 A backend can report a failed request as a successful step, so exit zero is not evidence
 that a model answered. `finish_dispatch` withholds the live observation when a backend
 reports zero tokens spent, and a reviewer's verdict contract catches the same thing a
-second way; `codex-sol` has only the first. A dispatch that reports `live_observation`
-withheld did not credit its pin, whatever its exit code said. `README.md` has the
-mechanism and `CHANGELOG.md` the incident that produced it.
+second way. Where no verdict contract stands behind a run — today only `codex-sol` — a
+count that cannot be read is refused as well, since unknown with nothing else vouching
+is not evidence either. A dispatch reporting `live_observation` withheld did not credit
+its pin, whatever its exit code said. `README.md` has the mechanism and `CHANGELOG.md`
+the incident.
 
 ## Re-entry
 

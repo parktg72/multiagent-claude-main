@@ -1860,11 +1860,23 @@ def finish_dispatch(
     # An exit code says the process ended, not that a model answered. Where the backend
     # reports what it spent, an explicit zero means it answered nothing, and crediting
     # the pin for that would put `observed_reachable` on a run with no evidence behind
-    # it. Unknown is not zero: a backend that reports nothing is recorded as before.
+    # it.
+    #
+    # An absent count is weaker evidence than a zero, and how much weaker depends on what
+    # else vouched for the run. A reviewer's verdict already did, so unknown stays
+    # unknown there — refusing would strand any backend that stops reporting. A
+    # non-reviewer has nothing else, and the shape is not hypothetical: the defect-4 agy
+    # run exited zero reporting no count, because `--print` had swallowed
+    # `--output-format json` and turned the JSON into prose. Today `codex-sol` is the
+    # only non-reviewer, and keying on the contract rather than on its name means a
+    # future one inherits the refusal instead of quietly missing it.
     tokens = reported_token_total(str(backend.get("kind")), result.stdout, result.stderr)
     verification["reported_tokens"] = "unreported" if tokens is None else tokens
-    if tokens == 0:
-        verification["live_observation"] = "withheld_zero_reported_tokens"
+    withheld = "withheld_zero_reported_tokens" if tokens == 0 else (
+        "withheld_unreadable_token_count" if tokens is None and not reviewer else None
+    )
+    if withheld:
+        verification["live_observation"] = withheld
         append_audit_mirror(log_path, "VERIFICATION", verification)
         print(json.dumps({"status": "ok", "role": start_event["worker"], "raw_output": "saved", "live_observation": "withheld"}))
         return 0

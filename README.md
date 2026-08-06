@@ -74,7 +74,10 @@ All four backends report a count, and no two report alike: codex prints it on st
 opencode carries per-step counts in its JSONL stdout, and agy and the Claude CLI each
 put a `usage` object in their stdout JSON under different key names. An absent count is
 treated as unknown, never as zero, so a backend that stops reporting does not read as
-one that answered nothing.
+one that answered nothing — for a reviewer, whose verdict has already vouched for the
+run. Where no verdict contract stands behind a run, an unreadable count is refused too:
+a swallowed flag once turned a backend's JSON into prose, erasing the count on a run
+that exited zero, and a worker without a second gate has nothing left to catch that.
 
 `preflight` uses local CLI help/catalog/cache inspection and a non-model Bubblewrap
 filesystem probe. Every CLI also runs its isolated-network sandbox `--version` startup
