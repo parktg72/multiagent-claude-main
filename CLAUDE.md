@@ -113,9 +113,15 @@ remain unproven, with the wording each one permits; it is mirrored as GitHub iss
 mount looks the way it does. `CHANGELOG.md` records how the rules here were
 arrived at; it is not loaded by default and is read only when that history matters.
 
-State of the harness as of 2026-08-05: all five workers have completed a real dispatch,
+State of the harness as of 2026-08-06: all six workers have completed a real dispatch,
 the producer-reviewer pipeline has run end to end across two rounds, and `bin/worker
 preflight` reports a `live_dispatch` observation per pin. Two limits stay open.
+
+A backend can report a failed request as a successful step. On 2026-08-06 an
+`opencode/kimi-k3` dispatch exited zero with `reason: "unknown"`, zero input and output
+tokens, and no text part; only the verdict contract caught it, and an identical
+re-dispatch succeeded. Exit zero is not evidence that a model answered — read the
+token counts, and keep the output contract as the thing that decides.
 
 ## Re-entry
 

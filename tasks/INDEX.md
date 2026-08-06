@@ -20,6 +20,7 @@ was reachable from the mock suite.
 | 8 | `kimi-reviewer` | this CLI cannot enforce a schema, so the model added an undeclared key | `kimi-live-test` run 20260804T081344 |
 | 9 | `fable-advisor` | `--bare` reads neither OAuth nor keychain, so this account could never authenticate — also broke `bin/claude-main` | (diagnosed before dispatch) |
 | 10 | `fable-advisor` | inlined schema was rejected because its meta-schema URL could not be resolved | `fable-live-test` run 20260805T001938 |
+| 11 | `kimi-reviewer` | **a failed request arrived as a successful step: exit 0, `reason: "unknown"`, zero input and output tokens, cost 0, after 63s with no text part.** Only the verdict contract caught it; an identical re-dispatch succeeded, so it is transient and unannounced | `zen-repin-live` run 20260806T042330 |
 
 ## Unresolved limits
 
