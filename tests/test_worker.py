@@ -203,6 +203,21 @@ class DispatcherContractTests(unittest.TestCase):
         packets = (self.runtime / "packets").resolve()
         self.assertEqual(Path(input_mount["source"]).resolve().parent, packets)
 
+    def test_deepseek_strict_mock_happy_path_uses_max(self) -> None:
+        self.write_task("deepseek-reviewer", "none")
+        self.approve("deepseek-reviewer")
+        result = self.dispatch("deepseek-reviewer")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        input_path = self.input_for("deepseek-reviewer")
+        dry = self.call("dispatch", "--role", "deepseek-reviewer", "--task", str(self.task), "--input", str(input_path), "--dry-run")
+        self.assertEqual(dry.returncode, 0, dry.stderr)
+        command = json.loads(dry.stdout)["command"]
+        pairs = list(zip(command, command[1:]))
+        self.assertIn(("--model", "opencode/deepseek-v4-pro"), pairs)
+        self.assertIn(("--variant", "max"), pairs)
+        # The catalog offers `high` for this model. The dispatcher must never pick it.
+        self.assertNotIn("high", command)
+
     def test_fable_strict_mock_happy_path(self) -> None:
         self.write_task("fable-advisor", "none")
         self.approve("fable-advisor")
@@ -250,6 +265,7 @@ class DispatcherContractTests(unittest.TestCase):
         self.assertEqual(report["model_calls"], 0)
         self.assertEqual(report["backends"]["agy"]["status"], "available_pending_auth")
         self.assertEqual(report["backends"]["kimi-reviewer"]["status"], "available_pending_auth")
+        self.assertEqual(report["backends"]["deepseek-reviewer"]["status"], "available_pending_auth")
 
     def test_source_has_no_whole_root_bind_or_dynamic_evaluator(self) -> None:
         source = WORKER.read_text(encoding="utf-8")

@@ -1,6 +1,6 @@
 # Claude Main Multiagent Harness
 
-Claude Code interactive session is sole main/orchestrator. Five explicit workers run
+Claude Code interactive session is sole main/orchestrator. Six explicit workers run
 only through `bin/worker`; no `claude-main` worker and no model fallback exist.
 
 ## Exact Runtime Map
@@ -12,6 +12,7 @@ only through `bin/worker`; no `claude-main` worker and no model fallback exist.
 | `codex-terra` | `codex exec --model gpt-5.6-terra -c model_reasoning_effort="max" --sandbox read-only` | read-only reviewer | argv verified; real dispatches returned schema-valid verdicts on 2026-08-04 and 2026-08-05 |
 | `agy` | `agy --model gemini-3.1-pro-high --effort high --mode plan --sandbox --disable-slash-commands --add-dir /input --output-format json ... --print <instruction>` | read-only reviewer | argv and catalog verified; a real dispatch returned a schema-valid verdict on 2026-08-04 |
 | `kimi-reviewer` | `opencode --pure run --model opencode/kimi-k3 --variant max --format json --dir /workspace <message> --file /input/...` | read-only reviewer | argv and catalog verified against provider `opencode`; the 2026-08-04 live observation was invalidated by the repin and has not yet been replaced; `--variant` is not enforceable |
+| `deepseek-reviewer` | `opencode --pure run --model opencode/deepseek-v4-pro --variant max --format json --dir /workspace <message> --file /input/...` | read-only reviewer | argv and catalog verified against provider `opencode`; no live dispatch yet; `--variant` is not enforceable, and this is the first pin whose catalog also offers `high` |
 | `fable-advisor` | `claude --model claude-fable-5 --print --tools "" --no-session-persistence` | tools disabled advisor | argv verified; a real dispatch returned a schema-valid verdict on 2026-08-05 with no tool use |
 
 Claude local changelog names `claude-opus-5`; launcher pins that exact candidate.

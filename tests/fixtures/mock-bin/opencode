@@ -18,7 +18,7 @@ def verdict() -> dict[str, object]:
         "evidence": ["Mock OpenCode received only an attached neutral review packet."],
         "unverified_claims": ["Mock catalog does not establish a live provider endpoint."],
         "risks": [{"failure_mode": "Large-context review can omit a changed file not present in the packet.", "trigger": "Packet assembly excludes a cross-cutting source path.", "impact": "Impact analysis can miss a regression in an unmounted source area.", "evidence_or_locator": "Review input schema names only supplied diff and test evidence as admissible material.", "mitigation": "Regenerate packet from an explicit changed-file manifest before dispatch."}],
-        "summary": "Mock Kimi fixture verdict for contract tests only.",
+        "summary": "Mock OpenCode fixture verdict for contract tests only.",
         "recommendations": [],
     }
 
@@ -30,17 +30,21 @@ def main() -> int:
         return 0
     if args == ["--pure", "--version"]:
         return startup()
-    # Only the pinned provider answers. A stale `opencode-go` probe must fail here
-    # rather than quietly returning a catalog for the provider we moved off.
+    # Both pinned models live under the same Zen provider. DeepSeek deliberately
+    # advertises `high` as well, so the fixture proves the dispatcher declines it.
     if args == ["--pure", "models", "opencode", "--verbose"]:
         print("opencode/kimi-k3")
         print(json.dumps({"id": "kimi-k3", "variants": {"max": {"reasoningEffort": "max"}}}))
+        print("opencode/deepseek-v4-pro")
+        print(json.dumps({"id": "deepseek-v4-pro", "variants": {"high": {"reasoningEffort": "high"}, "max": {"reasoningEffort": "max"}}}))
         return 0
     if len(args) >= 3 and args[:2] == ["--pure", "models"]:
         return 64
+    if args[:3] != ["--pure", "run", "--model"] or args[3] not in {"opencode/kimi-k3", "opencode/deepseek-v4-pro"}:
+        return 64
     # The real CLI treats --file as an array option that consumes trailing
     # positionals, so the message must come before it. Refuse any other order.
-    expected = ["--pure", "run", "--model", "opencode/kimi-k3", "--variant", "max", "--format", "json", "--dir", "/workspace"]
+    expected = ["--pure", "run", "--model", args[3], "--variant", "max", "--format", "json", "--dir", "/workspace"]
     if args[: len(expected)] != expected or len(args) != len(expected) + 4:
         return 64
     message, file_flag, packet, schema = args[len(expected) :]

@@ -21,6 +21,11 @@ Worker pool is fixed:
   decision: the opencode catalog defines no other variant for K3. Automatic variant
   substitution stays forbidden; when the pinned variant is absent, preflight fails
   closed.
+- `deepseek-reviewer` — `opencode/deepseek-v4-pro`, variant `max`; read-only
+  enumerative reviewer on the same Zen provider. Unlike K3 this model's catalog
+  advertises a second variant, `high`, so it is the first pin where the
+  unenforceable `--variant` limit in `ISSUES.md` is an active exposure rather than a
+  latent one. `max` is an explicit human decision recorded on 2026-08-06.
 - `fable-advisor` — `claude-fable-5`; tools disabled, no session persistence,
   read-only advisor for important design, ambiguity, security, and regression risk.
   Runs without `--bare`, which reads neither OAuth nor keychain and therefore cannot

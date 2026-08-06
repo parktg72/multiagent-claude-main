@@ -426,12 +426,13 @@ class HardenedDispatcherTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         report = json.loads(result.stdout)
         self.assertEqual(report["cache_scope"], "single_invocation_only")
-        for role in ("claude-main", "codex-sol", "codex-terra", "agy", "kimi-reviewer", "fable-advisor"):
+        for role in ("claude-main", "codex-sol", "codex-terra", "agy", "kimi-reviewer", "deepseek-reviewer", "fable-advisor"):
             self.assertEqual(report["backends"][role]["sandbox_startup"]["status"], "available", role)
         self.assertEqual(report["backends"]["codex-sol"]["endpoint"], "unverified")
         self.assertEqual(report["backends"]["codex-sol"]["auth"], "unverified")
         self.assertEqual(report["backends"]["agy"]["model_acceptance"], "catalog_verified")
         self.assertEqual(report["backends"]["kimi-reviewer"]["model_acceptance"], "variant_verified")
+        self.assertEqual(report["backends"]["deepseek-reviewer"]["model_acceptance"], "variant_verified")
 
     def test_startup_probe_failure_is_redacted_and_fail_closed(self) -> None:
         result = self.call("preflight", "--allow-unavailable", MOCK_STARTUP_FAIL="codex")
@@ -888,6 +889,19 @@ class HardenedDispatcherTests(unittest.TestCase):
                 with self.assertRaises(worker.SchemaError):
                     worker.build_inner_command(backend, binding, True, "/input/review-input.json")
         pinned = {"kind": "opencode", "model": "opencode/kimi-k3", "effort": "max"}
+        command = worker.build_inner_command(pinned, binding, True, "/input/review-input.json")
+        self.assertIn(("--variant", "max"), list(zip(command, command[1:])))
+
+    def test_deepseek_command_refuses_high_even_though_the_catalog_offers_it(self) -> None:
+        # ISSUES #2: the CLI accepts any --variant silently, so the dispatcher is the
+        # only thing standing between a config edit and a downgraded review.
+        binding = worker.RuntimeBinding(prefix=["opencode"], mounts=[])
+        for effort in ("high", "low", None):
+            with self.subTest(effort=effort):
+                backend = {"kind": "opencode", "model": "opencode/deepseek-v4-pro", "effort": effort}
+                with self.assertRaises(worker.SchemaError):
+                    worker.build_inner_command(backend, binding, True, "/input/review-input.json")
+        pinned = {"kind": "opencode", "model": "opencode/deepseek-v4-pro", "effort": "max"}
         command = worker.build_inner_command(pinned, binding, True, "/input/review-input.json")
         self.assertIn(("--variant", "max"), list(zip(command, command[1:])))
 

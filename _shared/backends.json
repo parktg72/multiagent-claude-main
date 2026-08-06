@@ -62,6 +62,19 @@
       "roles": ["large-context-analysis", "impact-analysis", "independent-review"],
       "preflight": "opencode Zen catalog must expose the pinned max variant; --agent is not authoritative; the dispatcher never swaps variants on its own"
     },
+    "deepseek-reviewer": {
+      "kind": "opencode",
+      "command": "opencode",
+      "model": "opencode/deepseek-v4-pro",
+      "effort": "max",
+      "access": "read-only",
+      "timeout_s": 900,
+      "requires_no_yes_man": true,
+      "fallbacks": [],
+      "fallback_policy": "forbid",
+      "roles": ["enumerative-review", "per-file-audit", "independent-review"],
+      "preflight": "opencode Zen catalog must expose the pinned max variant; this model also advertises high, which the dispatcher must never build"
+    },
     "fable-advisor": {
       "kind": "claude",
       "command": "claude",

@@ -120,7 +120,9 @@ approval.
 |---|---|
 | Implementation, debugging, scoped edits | `codex-sol` (the only writer) |
 | Independent validation, regression analysis | `codex-terra` |
-| Third-party perspective, operations, large context | `agy`, `kimi-reviewer` |
+| Third-party perspective, operations, multimodal | `agy` |
+| Cross-cutting impact, one contested verdict | `kimi-reviewer` |
+| Per-file audits and long enumerative findings | `deepseek-reviewer` |
 | Design judgement, ambiguity, security risk | `fable-advisor` |
 
 Two reviewers earn their cost. On one identical packet the three reviewers found three

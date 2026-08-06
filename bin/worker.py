@@ -1151,7 +1151,7 @@ def build_inner_command(backend: dict[str, Any], binding: RuntimeBinding, review
         return command + ["--print", agy_prompt(reviewer, input_destination)]
     if kind == "opencode":
         if effort != "max":
-            raise SchemaError("Kimi reviewer requires max variant")
+            raise SchemaError("opencode reviewer requires the pinned max variant")
         # `--file` is an array option: it swallows every positional that follows it,
         # so a trailing message becomes a second attachment path and the run dies with
         # "File not found: <message>". The message must precede --file. Note this is
@@ -1574,6 +1574,10 @@ def cli_contracts(cache: PreflightCache | None = None) -> dict[str, dict[str, An
             "ok": open_ok,
             "missing": all_flags_present(open_help, ("--pure", "--model", "--variant", "--format", "--dir", "--file")),
         },
+        "deepseek-reviewer": {
+            "ok": open_ok,
+            "missing": all_flags_present(open_help, ("--pure", "--model", "--variant", "--format", "--dir", "--file")),
+        },
     }
     return active_cache.contracts
 
@@ -1640,19 +1644,20 @@ def backend_preflight(role: str, backend: dict[str, Any], cache: PreflightCache 
 def invariant_issues(backends: dict[str, Any] | None = None) -> list[str]:
     data = backends if backends is not None else load_backends()
     workers = data.get("workers")
-    expected = {"codex-sol", "codex-terra", "agy", "kimi-reviewer", "fable-advisor"}
+    expected = {"codex-sol", "codex-terra", "agy", "kimi-reviewer", "deepseek-reviewer", "fable-advisor"}
     issues: list[str] = []
     orchestrator = data.get("orchestrator")
     if not isinstance(orchestrator, dict) or orchestrator.get("model_id") != "claude-opus-5" or orchestrator.get("effort") != "high":
         issues.append("main exact model or effort pin drift")
     if not isinstance(workers, dict) or set(workers) != expected:
-        issues.append("worker inventory must contain exactly five named workers and no claude-main worker")
+        issues.append("worker inventory must contain exactly six named workers and no claude-main worker")
         return issues
     pins = {
         "codex-sol": ("codex", "codex", "gpt-5.6-sol", "high", "workspace-write"),
         "codex-terra": ("codex", "codex", "gpt-5.6-terra", "max", "read-only"),
         "agy": ("agy", "agy", "gemini-3.1-pro-high", "high", "read-only"),
         "kimi-reviewer": ("opencode", "opencode", "opencode/kimi-k3", "max", "read-only"),
+        "deepseek-reviewer": ("opencode", "opencode", "opencode/deepseek-v4-pro", "max", "read-only"),
         "fable-advisor": ("claude", "claude", "claude-fable-5", None, "read-only"),
     }
     for role, (kind, command, model, effort, access) in pins.items():
@@ -1715,6 +1720,7 @@ def invariant_issues(backends: dict[str, Any] | None = None) -> list[str]:
             'codex exec --model gpt-5.6-terra -c model_reasoning_effort="max" --sandbox read-only',
             "agy --model gemini-3.1-pro-high --effort high --mode plan --sandbox --disable-slash-commands --add-dir /input --output-format json ... --print <instruction>",
             "opencode --pure run --model opencode/kimi-k3 --variant max",
+            "opencode --pure run --model opencode/deepseek-v4-pro --variant max",
             'claude --model claude-fable-5 --print --tools "" --no-session-persistence',
         )
         if any(item not in text for item in required_argv) or "--model opus" in text:
@@ -1939,7 +1945,7 @@ def preflight(arguments: argparse.Namespace) -> int:
         "auth": "unverified" if main_startup.status == "available" else "not_attempted",
         "model_acceptance": "local_candidate_only" if main_evidence else "candidate_unavailable",
     }
-    for role in ("codex-sol", "codex-terra", "agy", "kimi-reviewer", "fable-advisor"):
+    for role in ("codex-sol", "codex-terra", "agy", "kimi-reviewer", "deepseek-reviewer", "fable-advisor"):
         backend = backends.get(role, {}) if isinstance(backends, dict) else {}
         probe = backend_preflight(role, backend, cache)
         observation = live_observation(role, backend) if isinstance(backend, dict) and backend else None
