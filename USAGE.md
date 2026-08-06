@@ -32,6 +32,18 @@ absolute path of the project you want worked on; main writes it into the task's
 `target_repo`. Pointing `target_repo` at this repository is refused — a worker may not
 edit the control plane that authorizes it.
 
+One catch, and it has bitten: it is the `--task` **argument** that resolves against the
+root, not the `bin/worker` **path** you type. Running `bin/worker approve …` from your
+home directory gets you `-bash: bin/worker: No such file or directory` before the
+harness sees anything. Either `cd` into the repository first, or spell the binary out:
+
+```sh
+/home/ptg/multiagent-claude-main/bin/worker approve --role kimi-reviewer \
+  --task tasks/<name>/task.md --confirm
+```
+
+The `--task tasks/<name>/task.md` in that command means the same file from anywhere.
+
 ## Who does what
 
 | Step | Who |
@@ -82,6 +94,37 @@ then verification of the result against the task's acceptance criteria.
 rm -rf /home/ptg/multiagent-auth
 ```
 
+## When a dispatch fails
+
+It will. Eight of the twenty-five live runs so far failed, and nine of the eleven
+defects in `tasks/INDEX.md` were found that way — the other two were caught reading a
+CLI's own help before spending anything. The order that works:
+
+**Read the raw output before theorising.** It is at
+`tasks/<name>/workers/<role>/runs/<run-id>/`, kept out of git on purpose. The `log.md`
+line names the run id.
+
+**Check `tasks/INDEX.md` first.** It maps every defect found so far to the run holding
+its evidence. A symptom that already happened does not need re-diagnosing.
+
+**Retry once before diagnosing.** On 2026-08-06 a `kimi-reviewer` dispatch exited zero
+having answered nothing — `reason: "unknown"`, zero tokens, no text part, sixty-three
+seconds — and an identical re-dispatch immediately after succeeded. Approval binds the
+tuple, not the attempt, so a retry needs no new confirmation. A failure that reproduces
+is a defect; one that does not is the provider having a bad minute, and both are worth
+recording either way.
+
+**Confirm the run actually counted.** A dispatch can exit zero and still not earn its
+live observation: `finish_dispatch` withholds the record when the backend reports zero
+tokens spent, logging `live_observation: withheld_zero_reported_tokens`. Check with
+
+```sh
+bin/worker preflight | python3 -c "import json,sys; print(json.load(sys.stdin)['backends']['<role>']['live_dispatch'])"
+```
+
+`succeeded` with today's run id means the pin is credited. `none_recorded_for_this_pin`
+means it is not — either nothing has run on this pin, or what ran did not count.
+
 ## Producer then reviewers
 
 A task carries exactly one `write_scope`, so the two stages cannot be approved from the
@@ -125,13 +168,22 @@ approval.
 | Per-file audits and long enumerative findings | `deepseek-reviewer` |
 | Design judgement, ambiguity, security risk | `fable-advisor` |
 
-Two reviewers earn their cost. On one identical packet the three reviewers found three
-different failure modes, and one of them found a defect in main's own evidence.
+Two reviewers earn their cost, and the two ways that pays out are both worth having. On
+one identical packet three reviewers once found three *different* failure modes, and one
+of them found a defect in main's own evidence. On another, two reviewers independently
+found the *same* structural point from different angles — which is the weaker-looking
+result and the more useful one, because agreement between isolated readers is evidence
+in a way one reader's confidence is not.
+
+Pick the smallest set that covers the question. A second opinion on a one-line change
+buys little; on a change to the approval or sandbox path it buys a lot.
 
 ## Cost
 
-Roughly 8k–25k tokens per dispatch. Twenty-two live runs across a full day of building
-and one complete pipeline came to about two dollars.
+Roughly 8k–25k tokens per dispatch. Twenty-five live runs — a full day of building, one
+complete pipeline, and one repin re-verification — came to a little over two dollars.
+The repin's three dispatches were about seventeen cents, one of which was free because
+it failed having spent nothing.
 
 ## The habit that matters most
 
