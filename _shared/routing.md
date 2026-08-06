@@ -7,10 +7,11 @@
 - Cross-cutting impact and contested single verdicts: `kimi-reviewer`
   (`opencode/kimi-k3`), only if its exact `max` variant preflight passes.
 - Enumerative review whose answer is long — per-file audits, long findings lists,
-  bulk low-risk checks: `deepseek-reviewer` (`opencode/deepseek-v4-pro`), whose
-  output ceiling is 384k against Kimi's 131k at a quarter of the output price.
-  Its catalog also advertises `high`; the dispatcher never builds it. For both,
-  an absent pinned variant disables the route instead of downgrading it.
+  bulk low-risk checks: `deepseek-reviewer` (`opencode/deepseek-v4-flash`), whose
+  catalog entry carries a 1M context and a 384k output ceiling at $0.14/$0.28 per
+  million in and out. Its catalog also advertises `low` and `high`; the dispatcher
+  never builds them. For both, an absent pinned variant disables the route instead
+  of downgrading it.
 - Operations, multimodal, or third-party review: `agy`, only if AGY exact pin
   preflight passes.
 - Important design, ambiguity, security, or regression risk: `fable-advisor`, then

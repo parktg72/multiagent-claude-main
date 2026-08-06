@@ -213,7 +213,7 @@ class DispatcherContractTests(unittest.TestCase):
         self.assertEqual(dry.returncode, 0, dry.stderr)
         command = json.loads(dry.stdout)["command"]
         pairs = list(zip(command, command[1:]))
-        self.assertIn(("--model", "opencode/deepseek-v4-pro"), pairs)
+        self.assertIn(("--model", "opencode/deepseek-v4-flash"), pairs)
         self.assertIn(("--variant", "max"), pairs)
         # The catalog offers `high` for this model. The dispatcher must never pick it.
         self.assertNotIn("high", command)

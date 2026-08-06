@@ -898,10 +898,10 @@ class HardenedDispatcherTests(unittest.TestCase):
         binding = worker.RuntimeBinding(prefix=["opencode"], mounts=[])
         for effort in ("high", "low", None):
             with self.subTest(effort=effort):
-                backend = {"kind": "opencode", "model": "opencode/deepseek-v4-pro", "effort": effort}
+                backend = {"kind": "opencode", "model": "opencode/deepseek-v4-flash", "effort": effort}
                 with self.assertRaises(worker.SchemaError):
                     worker.build_inner_command(backend, binding, True, "/input/review-input.json")
-        pinned = {"kind": "opencode", "model": "opencode/deepseek-v4-pro", "effort": "max"}
+        pinned = {"kind": "opencode", "model": "opencode/deepseek-v4-flash", "effort": "max"}
         command = worker.build_inner_command(pinned, binding, True, "/input/review-input.json")
         self.assertIn(("--variant", "max"), list(zip(command, command[1:])))
 
@@ -1014,17 +1014,17 @@ class HardenedDispatcherTests(unittest.TestCase):
             [
                 "opencode/kimi-k3",
                 json.dumps({"id": "kimi-k3", "variants": {"max": {"reasoningEffort": "max"}}}),
-                "opencode/deepseek-v4-pro",
+                "opencode/deepseek-v4-flash",
                 json.dumps(
                     {
-                        "id": "deepseek-v4-pro",
+                        "id": "deepseek-v4-flash",
                         "variants": {"high": {"reasoningEffort": "high"}, "max": {"reasoningEffort": "max"}},
                     }
                 ),
             ]
         )
         kimi = worker.opencode_model_metadata(catalog, "kimi-k3")
-        deepseek = worker.opencode_model_metadata(catalog, "deepseek-v4-pro")
+        deepseek = worker.opencode_model_metadata(catalog, "deepseek-v4-flash")
         self.assertEqual(set(kimi["variants"]), {"max"})
         self.assertEqual(set(deepseek["variants"]), {"high", "max"})
         self.assertIsNone(worker.opencode_model_metadata(catalog, "not-a-real-model"))

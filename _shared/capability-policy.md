@@ -7,7 +7,7 @@
 | `codex-terra` | `gpt-5.6-terra`, `max` | read-only | independent validation, regression review |
 | `agy` | `gemini-3.1-pro-high`, `high` | read-only | operations, multimodal, third-party review |
 | `kimi-reviewer` | `opencode/kimi-k3`, `max` | read-only | cross-cutting impact, one contested verdict |
-| `deepseek-reviewer` | `opencode/deepseek-v4-pro`, `max` | read-only | per-file audits, long enumerative findings |
+| `deepseek-reviewer` | `opencode/deepseek-v4-flash`, `max` | read-only | per-file audits, long enumerative findings |
 | `fable-advisor` | `claude-fable-5` | tools disabled/read-only | critical design, ambiguity, security, regression advice |
 
 No backend has fallback. An unavailable exact pin returns failure. `preflight` uses

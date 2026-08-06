@@ -1664,7 +1664,7 @@ def invariant_issues(backends: dict[str, Any] | None = None) -> list[str]:
         "codex-terra": ("codex", "codex", "gpt-5.6-terra", "max", "read-only"),
         "agy": ("agy", "agy", "gemini-3.1-pro-high", "high", "read-only"),
         "kimi-reviewer": ("opencode", "opencode", "opencode/kimi-k3", "max", "read-only"),
-        "deepseek-reviewer": ("opencode", "opencode", "opencode/deepseek-v4-pro", "max", "read-only"),
+        "deepseek-reviewer": ("opencode", "opencode", "opencode/deepseek-v4-flash", "max", "read-only"),
         "fable-advisor": ("claude", "claude", "claude-fable-5", None, "read-only"),
     }
     for role, (kind, command, model, effort, access) in pins.items():
@@ -1727,7 +1727,7 @@ def invariant_issues(backends: dict[str, Any] | None = None) -> list[str]:
             'codex exec --model gpt-5.6-terra -c model_reasoning_effort="max" --sandbox read-only',
             "agy --model gemini-3.1-pro-high --effort high --mode plan --sandbox --disable-slash-commands --add-dir /input --output-format json ... --print <instruction>",
             "opencode run --model opencode/kimi-k3 --variant max",
-            "opencode run --model opencode/deepseek-v4-pro --variant max",
+            "opencode run --model opencode/deepseek-v4-flash --variant max",
             'claude --model claude-fable-5 --print --tools "" --no-session-persistence',
         )
         if any(item not in text for item in required_argv) or "--model opus" in text:

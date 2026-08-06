@@ -31,16 +31,17 @@ def main() -> int:
     if args == ["--pure", "--version"]:
         return startup()
     # Both pinned models live under the same Zen provider. DeepSeek deliberately
-    # advertises `high` as well, so the fixture proves the dispatcher declines it.
+    # advertises `low` and `high` as well, so the fixture proves the dispatcher
+    # declines every variant but the pinned `max`.
     if args == ["--pure", "models", "opencode", "--verbose"]:
         print("opencode/kimi-k3")
         print(json.dumps({"id": "kimi-k3", "variants": {"max": {"reasoningEffort": "max"}}}))
-        print("opencode/deepseek-v4-pro")
-        print(json.dumps({"id": "deepseek-v4-pro", "variants": {"high": {"reasoningEffort": "high"}, "max": {"reasoningEffort": "max"}}}))
+        print("opencode/deepseek-v4-flash")
+        print(json.dumps({"id": "deepseek-v4-flash", "variants": {"low": {"reasoningEffort": "low"}, "high": {"reasoningEffort": "high"}, "max": {"reasoningEffort": "max"}}}))
         return 0
     if len(args) >= 3 and args[:2] == ["--pure", "models"]:
         return 64
-    if len(args) < 3 or args[:2] != ["run", "--model"] or args[2] not in {"opencode/kimi-k3", "opencode/deepseek-v4-pro"}:
+    if len(args) < 3 or args[:2] != ["run", "--model"] or args[2] not in {"opencode/kimi-k3", "opencode/deepseek-v4-flash"}:
         return 64
     # The real CLI treats --file as an array option that consumes trailing
     # positionals, so the message must come before it. Refuse any other order.
