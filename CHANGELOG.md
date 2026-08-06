@@ -114,3 +114,26 @@ packet, which makes them a check on the orchestrator as much as on the workers.
 
 A model pin is not exclusive, and the opencode `--variant` pin is not enforceable. Both
 are stated in `ISSUES.md` with what would close them, and filed as issues #1 and #2.
+
+## 2026-08-06, later: the exit code stopped being enough
+
+Defect 11 was a run that exited zero having answered nothing — `reason: "unknown"`, zero
+tokens, no text part, sixty-three seconds. Kimi is a reviewer, so the verdict contract
+caught it. That prompted the obvious question about the one worker with no verdict
+contract: `codex-sol` is the only backend with `requires_no_yes_man: false`, so nothing
+stood between a zero-exit run and the `live_dispatch` record that preflight reads as
+`observed_reachable`. Filed as issue #3.
+
+The fix was cheaper than the issue expected, because the evidence was already on disk.
+codex prints `tokens used` and a count on stderr, which the dispatcher has been saving
+since the first live run; opencode carries per-step counts in its JSONL. `finish_dispatch`
+now reads whichever applies and withholds the observation when the backend reports zero.
+Replayed against all 25 saved runs, it flags exactly one — the defect-11 run — and no
+legitimate run. Issue #3 closed the day it opened.
+
+Two things this deliberately does not do. It does not fail the dispatch: the exit code
+still describes the child, while the observation describes the evidence, and conflating
+them would make a producer round look broken when main can simply read the tree. And it
+treats an unreported count as unknown rather than as zero, because agy and the Claude CLI
+report nothing the dispatcher captures — a gate that guessed would refuse to credit runs
+that worked.

@@ -905,6 +905,58 @@ class HardenedDispatcherTests(unittest.TestCase):
         command = worker.build_inner_command(pinned, binding, True, "/input/review-input.json")
         self.assertIn(("--variant", "max"), list(zip(command, command[1:])))
 
+    def test_reported_token_total_reads_what_each_backend_actually_prints(self) -> None:
+        # Formats copied from saved runs: codex-sol 20260804T014718 (stderr) and the
+        # zen-repin-live pair 20260806T043336 / 20260806T042330 (opencode JSONL stdout).
+        codex_stderr = b"+    return a * b\n\ntokens used\n14,383\n"
+        self.assertEqual(worker.reported_token_total("codex", b"", codex_stderr), 14383)
+        self.assertIsNone(worker.reported_token_total("codex", b"", b"no usage line here\n"))
+
+        answered = (
+            b'{"type":"step_start","part":{"type":"step-start"}}\n'
+            b'{"type":"text","part":{"type":"text","text":"{}"}}\n'
+            b'{"type":"step_finish","part":{"reason":"stop","tokens":'
+            b'{"total":21601,"input":17825,"output":3776,"reasoning":0,"cache":{"write":0,"read":0}}}}\n'
+        )
+        self.assertEqual(worker.reported_token_total("opencode", answered, b""), 21601)
+
+        # Defect 11: exit zero, reason unknown, nothing spent, no text part.
+        silent = (
+            b'{"type":"step_start","part":{"type":"step-start"}}\n'
+            b'{"type":"step_finish","part":{"reason":"unknown","tokens":'
+            b'{"input":0,"output":0,"reasoning":0,"cache":{"write":0,"read":0}},"cost":0}}\n'
+        )
+        self.assertEqual(worker.reported_token_total("opencode", silent, b""), 0)
+
+        # Unknown must never read as zero, or a silent backend would be treated as failed.
+        for kind in ("agy", "claude"):
+            with self.subTest(kind=kind):
+                self.assertIsNone(worker.reported_token_total(kind, answered, codex_stderr))
+
+    def test_zero_reported_tokens_withholds_the_live_observation(self) -> None:
+        # ISSUES #3: codex-sol has no verdict contract, so without this the exit code
+        # alone would earn it observed_reachable.
+        recorded: list[str] = []
+        plan = worker.SandboxPlan(command=["/bin/true"], mounts=[], cwd="/workspace", environment={}, network=True)
+        outcome = worker.RunResult(0, b"", b"tokens used\n0\n", 0.5, False)
+        log_path = self.tmp / "log.md"
+        log_path.write_text("# Log\n", encoding="utf-8")
+        start = {"worker": "codex-sol", "model": "gpt-5.6-sol", "run": "20260806T000000-1-1"}
+        with mock.patch.object(worker, "run_limited", return_value=outcome), \
+             mock.patch.object(worker, "record_live_observation", side_effect=lambda *a: recorded.append(a[0])):
+            code = worker.finish_dispatch(plan, b"", 60, {"kind": "codex"}, self.tmp, log_path, start, False)
+        self.assertEqual(code, 0)
+        self.assertEqual(recorded, [], "a zero-token run must not credit the pin")
+        mirror = log_path.read_text(encoding="utf-8")
+        self.assertIn("withheld_zero_reported_tokens", mirror)
+
+        # The same path with a real count still records, so the gate is not a blanket refusal.
+        outcome = worker.RunResult(0, b"", b"tokens used\n8,450\n", 0.5, False)
+        with mock.patch.object(worker, "run_limited", return_value=outcome), \
+             mock.patch.object(worker, "record_live_observation", side_effect=lambda *a: recorded.append(a[0])):
+            worker.finish_dispatch(plan, b"", 60, {"kind": "codex"}, self.tmp, log_path, start, False)
+        self.assertEqual(recorded, ["codex-sol"])
+
     def test_opencode_model_metadata_selects_by_id_from_a_multi_model_catalog(self) -> None:
         # The real CLI's --verbose catalog dump prints every model under a provider,
         # each preceded by a bare `provider/model` line. Both pins are `max`, so a

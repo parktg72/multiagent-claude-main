@@ -1,15 +1,18 @@
 # Open Issues
 
 Filed upstream as
-[#1](https://github.com/parktg72/multiagent-claude-main/issues/1),
-[#2](https://github.com/parktg72/multiagent-claude-main/issues/2), and
-[#3](https://github.com/parktg72/multiagent-claude-main/issues/3). This file holds the
+[#1](https://github.com/parktg72/multiagent-claude-main/issues/1) and
+[#2](https://github.com/parktg72/multiagent-claude-main/issues/2). This file holds the
 long form, including the evidence paths, which stay on the machine that ran the
 dispatches.
 
-Known gaps between what the harness pins and what it can prove. All three were found by
-dispatching for real between 2026-08-04 and 2026-08-06, and all three are unresolved
-rather than mitigated. None blocks use; each limits what a claim about a run may say.
+Known gaps between what the harness pins and what it can prove. Both were found by
+dispatching for real between 2026-08-04 and 2026-08-06, and both are unresolved rather
+than mitigated. Neither blocks use; each limits what a claim about a run may say.
+
+A third gap was opened and closed the same day: `codex-sol`'s live observation used to
+rest on the exit code alone. Issue #3 has the history; the fix is in `finish_dispatch`,
+which now withholds the observation when a backend reports zero tokens spent.
 
 ---
 
@@ -106,68 +109,9 @@ produced the review; do not state the reasoning effort it ran at.
 
 ---
 
-## 3. `codex-sol`'s live observation rests on the exit code alone
-
-**Status:** open, fixable at the harness layer
-**Affects:** `codex-sol` only — it is the one worker with `requires_no_yes_man: false`
-**Evidence:** `tasks/zen-repin-live` run 20260806T042330 proves the failure mode exists
-on this harness; `tasks/sol-live-test` run 20260804T014718 holds the codex stderr that
-shows the fix is available
-
-A dispatch that exits zero writes `.runtime/live/<role>.json`, and preflight then
-upgrades that role to `available_live_observed` with `endpoint: observed_reachable`,
-`auth: observed_accepted`, and `model_acceptance: observed_accepted`.
-
-For five of the six workers a second gate stands in front of that. In `finish_dispatch`,
-a reviewer's output must pass `extract_and_validate_verdict` before
-`record_live_observation` is reached, so a run that produced no answer cannot earn the
-observation. `codex-sol` is the only worker with `requires_no_yes_man: false`, so for it
-the exit code is the whole test.
-
-That mattered from 2026-08-06, when a backend was observed doing exactly the thing the
-exit code cannot see:
-
-```
-{"type":"step_finish","part":{"reason":"unknown",
- "tokens":{"input":0,"output":0,"reasoning":0},"cost":0}}
-```
-
-`opencode/kimi-k3`, exit 0, 63 seconds, no text part at all. The verdict contract caught
-it because Kimi is a reviewer. A `codex-sol` run in that state would be recorded as a
-successful live dispatch.
-
-**What is not claimed.** This was observed on opencode, not on codex. Nothing here says
-codex behaves this way. The gap is that the harness could not tell if it did.
-
-**What limits the damage.** `codex-sol` is a producer, so main runs the tests and reads
-the diff after a producer round; an empty run is visible in the tree. That is a check by
-main, not by the dispatcher, and it does not stop the observation from being written.
-The exposure is to the provenance record, not to the change under review — the same
-family as issue 1.
-
-**What would resolve it.** codex already reports usage on stderr, which the dispatcher
-already captures:
-
-```
-tokens used
-14,383
-```
-
-Parse it, and refuse to record a live observation when the count is zero or absent.
-Measured on 2026-08-06: of the backends whose stderr this harness has kept, codex is the
-one that reports a token count there; agy, opencode, and the Claude CLI do not. So the
-fix is available exactly where the gap is, and a general solution is not required to
-close this issue.
-
-**Interim rule.** For `codex-sol`, `available_live_observed` means a dispatch exited
-zero. It does not mean a model answered. Read the run's raw stderr before treating the
-observation as proof of endpoint acceptance.
-
----
-
 ## Reporting more
 
-Every entry follows the same shape on purpose: what was measured, what it means, what
+Both entries follow the same shape on purpose: what was measured, what it means, what
 would close it, and what may be claimed meanwhile. An issue that cannot state its own
 evidence path does not belong here — put it in a task under `tasks/` and dispatch
 against it first.
