@@ -69,9 +69,12 @@ or adding a no-sandbox path would remove the boundary the dispatcher exists to e
 
 ### Container recipe
 
-What the image needs, in the order it was installed on `ubuntu:24.04`. This is a record
-of what was run, not a Dockerfile that has been built as one file — assemble it however
-your tooling prefers.
+What the image needs, in the order it was installed on `ubuntu:24.04`. Assembled as one
+Dockerfile and built, producing an image whose `bwrap`, `python3`, `git`, `claude`,
+`codex`, `opencode`, and `agy` all resolve, and which then ran the suite and `preflight`
+below. Two values in it are pins rather than constants: the node tarball must match the
+**container's** architecture, and the `agy` URL and sha512 come from the manifest for a
+specific version.
 
 1. apt: `bubblewrap python3 git ca-certificates procps`, plus `curl xz-utils` for the
    steps below. Bubblewrap and Python are the only ones `tests/run.sh` itself needs.
