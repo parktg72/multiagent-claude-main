@@ -426,12 +426,13 @@ class HardenedDispatcherTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         report = json.loads(result.stdout)
         self.assertEqual(report["cache_scope"], "single_invocation_only")
-        for role in ("claude-main", "codex-sol", "codex-terra", "agy", "kimi-reviewer", "fable-advisor"):
+        for role in ("claude-main", "codex-sol", "codex-terra", "agy", "kimi-reviewer", "deepseek-reviewer", "fable-advisor"):
             self.assertEqual(report["backends"][role]["sandbox_startup"]["status"], "available", role)
         self.assertEqual(report["backends"]["codex-sol"]["endpoint"], "unverified")
         self.assertEqual(report["backends"]["codex-sol"]["auth"], "unverified")
         self.assertEqual(report["backends"]["agy"]["model_acceptance"], "catalog_verified")
         self.assertEqual(report["backends"]["kimi-reviewer"]["model_acceptance"], "variant_verified")
+        self.assertEqual(report["backends"]["deepseek-reviewer"]["model_acceptance"], "variant_verified")
 
     def test_startup_probe_failure_is_redacted_and_fail_closed(self) -> None:
         result = self.call("preflight", "--allow-unavailable", MOCK_STARTUP_FAIL="codex")
@@ -884,12 +885,64 @@ class HardenedDispatcherTests(unittest.TestCase):
         binding = worker.RuntimeBinding(prefix=["opencode"], mounts=[])
         for effort in ("high", "low", "medium", None):
             with self.subTest(effort=effort):
-                backend = {"kind": "opencode", "model": "opencode-go/kimi-k3", "effort": effort}
+                backend = {"kind": "opencode", "model": "opencode/kimi-k3", "effort": effort}
                 with self.assertRaises(worker.SchemaError):
                     worker.build_inner_command(backend, binding, True, "/input/review-input.json")
-        pinned = {"kind": "opencode", "model": "opencode-go/kimi-k3", "effort": "max"}
+        pinned = {"kind": "opencode", "model": "opencode/kimi-k3", "effort": "max"}
         command = worker.build_inner_command(pinned, binding, True, "/input/review-input.json")
         self.assertIn(("--variant", "max"), list(zip(command, command[1:])))
+
+    def test_deepseek_command_refuses_high_even_though_the_catalog_offers_it(self) -> None:
+        # ISSUES #2: the CLI accepts any --variant silently, so the dispatcher is the
+        # only thing standing between a config edit and a downgraded review.
+        binding = worker.RuntimeBinding(prefix=["opencode"], mounts=[])
+        for effort in ("high", "low", None):
+            with self.subTest(effort=effort):
+                backend = {"kind": "opencode", "model": "opencode/deepseek-v4-pro", "effort": effort}
+                with self.assertRaises(worker.SchemaError):
+                    worker.build_inner_command(backend, binding, True, "/input/review-input.json")
+        pinned = {"kind": "opencode", "model": "opencode/deepseek-v4-pro", "effort": "max"}
+        command = worker.build_inner_command(pinned, binding, True, "/input/review-input.json")
+        self.assertIn(("--variant", "max"), list(zip(command, command[1:])))
+
+    def test_opencode_model_metadata_selects_by_id_from_a_multi_model_catalog(self) -> None:
+        # The real CLI's --verbose catalog dump prints every model under a provider,
+        # each preceded by a bare `provider/model` line. Both pins are `max`, so a
+        # reader that returned the wrong model's metadata -- or simply the first JSON
+        # object it found in the dump -- would still make every other test pass.
+        catalog = "\n".join(
+            [
+                "opencode/kimi-k3",
+                json.dumps({"id": "kimi-k3", "variants": {"max": {"reasoningEffort": "max"}}}),
+                "opencode/deepseek-v4-pro",
+                json.dumps(
+                    {
+                        "id": "deepseek-v4-pro",
+                        "variants": {"high": {"reasoningEffort": "high"}, "max": {"reasoningEffort": "max"}},
+                    }
+                ),
+            ]
+        )
+        kimi = worker.opencode_model_metadata(catalog, "kimi-k3")
+        deepseek = worker.opencode_model_metadata(catalog, "deepseek-v4-pro")
+        self.assertEqual(set(kimi["variants"]), {"max"})
+        self.assertEqual(set(deepseek["variants"]), {"high", "max"})
+        self.assertIsNone(worker.opencode_model_metadata(catalog, "not-a-real-model"))
+
+    def test_opencode_preflight_fails_closed_on_a_pin_without_a_provider_prefix(self) -> None:
+        # A bare model id would make the dispatcher probe an empty provider. It must
+        # refuse rather than guess which provider was meant.
+        startup = worker.StartupProbe("available", "test stub")
+        contracts = {"kimi-reviewer": {"ok": True, "missing": []}}
+        with mock.patch.object(worker, "runtime_startup_probe", return_value=startup), \
+             mock.patch.object(worker, "cli_contracts", return_value=contracts):
+            probe = worker.backend_preflight(
+                "kimi-reviewer",
+                {"kind": "opencode", "command": "opencode", "model": "kimi-k3", "effort": "max"},
+            )
+        self.assertEqual(probe.status, "unavailable_fail_closed")
+        self.assertEqual(probe.model_acceptance, "model_unavailable")
+        self.assertIn("provider/model", probe.detail)
 
     def test_runtime_override_is_refused_outside_fixture_test_mode(self) -> None:
         # Production must never relocate the authoritative approval journal.

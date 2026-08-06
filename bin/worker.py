@@ -1151,7 +1151,7 @@ def build_inner_command(backend: dict[str, Any], binding: RuntimeBinding, review
         return command + ["--print", agy_prompt(reviewer, input_destination)]
     if kind == "opencode":
         if effort != "max":
-            raise SchemaError("Kimi reviewer requires max variant")
+            raise SchemaError("opencode reviewer requires the pinned max variant")
         # `--file` is an array option: it swallows every positional that follows it,
         # so a trailing message becomes a second attachment path and the run dies with
         # "File not found: <message>". The message must precede --file. Note this is
@@ -1511,7 +1511,7 @@ def exact_catalog_line(output: str, model: str) -> bool:
     return any(line.strip() == model for line in output.splitlines())
 
 
-def opencode_kimi_metadata(output: str) -> dict[str, Any] | None:
+def opencode_model_metadata(output: str, model_id: str) -> dict[str, Any] | None:
     decoder = json.JSONDecoder()
     for index, character in enumerate(output):
         if character != "{":
@@ -1520,7 +1520,7 @@ def opencode_kimi_metadata(output: str) -> dict[str, Any] | None:
             value, _ = decoder.raw_decode(output[index:])
         except json.JSONDecodeError:
             continue
-        if isinstance(value, dict) and value.get("id") == "kimi-k3":
+        if isinstance(value, dict) and value.get("id") == model_id:
             return value
     return None
 
@@ -1574,6 +1574,10 @@ def cli_contracts(cache: PreflightCache | None = None) -> dict[str, dict[str, An
             "ok": open_ok,
             "missing": all_flags_present(open_help, ("--pure", "--model", "--variant", "--format", "--dir", "--file")),
         },
+        "deepseek-reviewer": {
+            "ok": open_ok,
+            "missing": all_flags_present(open_help, ("--pure", "--model", "--variant", "--format", "--dir", "--file")),
+        },
     }
     return active_cache.contracts
 
@@ -1618,13 +1622,18 @@ def backend_preflight(role: str, backend: dict[str, Any], cache: PreflightCache 
         if not ok or not exact_catalog_line(catalog, str(backend.get("model"))):
             return BackendPreflight("unavailable_fail_closed", "exact AGY model is absent from catalog", startup, "unverified", "unverified", "catalog_unavailable")
         return BackendPreflight("available_pending_auth", "exact catalog token and CLI contract verified; endpoint/auth unverified", startup, "unverified", "unverified", "catalog_verified")
-    if role == "kimi-reviewer":
-        ok, catalog = cached_local_probe(active_cache, "opencode-kimi-models", ["opencode", "--pure", "models", "opencode-go", "--verbose"])
-        metadata = opencode_kimi_metadata(catalog) if ok else None
+    if kind == "opencode":
+        # The pin is `provider/model`. Deriving both from it keeps a second opencode
+        # worker a configuration change instead of another role-named branch.
+        provider, separator, model_id = str(backend.get("model", "")).partition("/")
+        if not separator or not re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,63}", provider) or not model_id:
+            return BackendPreflight("unavailable_fail_closed", "opencode model pin must be provider/model", startup, "unverified", "unverified", "model_unavailable")
+        ok, catalog = cached_local_probe(active_cache, f"opencode-models:{provider}", ["opencode", "--pure", "models", provider, "--verbose"])
+        metadata = opencode_model_metadata(catalog, model_id) if ok else None
         variants = metadata.get("variants", {}) if isinstance(metadata, dict) else {}
         if not isinstance(variants, dict) or backend.get("effort") not in variants:
-            return BackendPreflight("unavailable_fail_closed", "pinned Kimi variant absent from catalog; automatic variant substitution forbidden", startup, "unverified", "unverified", "variant_unavailable")
-        return BackendPreflight("available_pending_auth", "exact Kimi max variant and CLI contract verified; endpoint/auth unverified", startup, "unverified", "unverified", "variant_verified")
+            return BackendPreflight("unavailable_fail_closed", "pinned opencode variant absent from catalog; automatic variant substitution forbidden", startup, "unverified", "unverified", "variant_unavailable")
+        return BackendPreflight("available_pending_auth", "exact opencode model and variant plus CLI contract verified; endpoint/auth unverified", startup, "unverified", "unverified", "variant_verified")
     if role in {"codex-sol", "codex-terra"}:
         return BackendPreflight("endpoint_unverified", "exact argv contract verified; endpoint/auth intentionally uncalled", startup, "unverified", "unverified", "unverified")
     if role == "fable-advisor":
@@ -1635,19 +1644,20 @@ def backend_preflight(role: str, backend: dict[str, Any], cache: PreflightCache 
 def invariant_issues(backends: dict[str, Any] | None = None) -> list[str]:
     data = backends if backends is not None else load_backends()
     workers = data.get("workers")
-    expected = {"codex-sol", "codex-terra", "agy", "kimi-reviewer", "fable-advisor"}
+    expected = {"codex-sol", "codex-terra", "agy", "kimi-reviewer", "deepseek-reviewer", "fable-advisor"}
     issues: list[str] = []
     orchestrator = data.get("orchestrator")
     if not isinstance(orchestrator, dict) or orchestrator.get("model_id") != "claude-opus-5" or orchestrator.get("effort") != "high":
         issues.append("main exact model or effort pin drift")
     if not isinstance(workers, dict) or set(workers) != expected:
-        issues.append("worker inventory must contain exactly five named workers and no claude-main worker")
+        issues.append("worker inventory must contain exactly six named workers and no claude-main worker")
         return issues
     pins = {
         "codex-sol": ("codex", "codex", "gpt-5.6-sol", "high", "workspace-write"),
         "codex-terra": ("codex", "codex", "gpt-5.6-terra", "max", "read-only"),
         "agy": ("agy", "agy", "gemini-3.1-pro-high", "high", "read-only"),
-        "kimi-reviewer": ("opencode", "opencode", "opencode-go/kimi-k3", "max", "read-only"),
+        "kimi-reviewer": ("opencode", "opencode", "opencode/kimi-k3", "max", "read-only"),
+        "deepseek-reviewer": ("opencode", "opencode", "opencode/deepseek-v4-pro", "max", "read-only"),
         "fable-advisor": ("claude", "claude", "claude-fable-5", None, "read-only"),
     }
     for role, (kind, command, model, effort, access) in pins.items():
@@ -1709,7 +1719,8 @@ def invariant_issues(backends: dict[str, Any] | None = None) -> list[str]:
             'codex exec --model gpt-5.6-sol -c model_reasoning_effort="high" --sandbox danger-full-access',
             'codex exec --model gpt-5.6-terra -c model_reasoning_effort="max" --sandbox read-only',
             "agy --model gemini-3.1-pro-high --effort high --mode plan --sandbox --disable-slash-commands --add-dir /input --output-format json ... --print <instruction>",
-            "opencode --pure run --model opencode-go/kimi-k3 --variant max",
+            "opencode --pure run --model opencode/kimi-k3 --variant max",
+            "opencode --pure run --model opencode/deepseek-v4-pro --variant max",
             'claude --model claude-fable-5 --print --tools "" --no-session-persistence',
         )
         if any(item not in text for item in required_argv) or "--model opus" in text:
@@ -1934,7 +1945,7 @@ def preflight(arguments: argparse.Namespace) -> int:
         "auth": "unverified" if main_startup.status == "available" else "not_attempted",
         "model_acceptance": "local_candidate_only" if main_evidence else "candidate_unavailable",
     }
-    for role in ("codex-sol", "codex-terra", "agy", "kimi-reviewer", "fable-advisor"):
+    for role in ("codex-sol", "codex-terra", "agy", "kimi-reviewer", "deepseek-reviewer", "fable-advisor"):
         backend = backends.get(role, {}) if isinstance(backends, dict) else {}
         probe = backend_preflight(role, backend, cache)
         observation = live_observation(role, backend) if isinstance(backend, dict) and backend else None

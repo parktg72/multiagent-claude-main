@@ -52,7 +52,7 @@
     "kimi-reviewer": {
       "kind": "opencode",
       "command": "opencode",
-      "model": "opencode-go/kimi-k3",
+      "model": "opencode/kimi-k3",
       "effort": "max",
       "access": "read-only",
       "timeout_s": 900,
@@ -60,7 +60,20 @@
       "fallbacks": [],
       "fallback_policy": "forbid",
       "roles": ["large-context-analysis", "impact-analysis", "independent-review"],
-      "preflight": "opencode metadata must expose the pinned max variant; --agent is not authoritative; the dispatcher never swaps variants on its own"
+      "preflight": "opencode Zen catalog must expose the pinned max variant; --agent is not authoritative; the dispatcher never swaps variants on its own"
+    },
+    "deepseek-reviewer": {
+      "kind": "opencode",
+      "command": "opencode",
+      "model": "opencode/deepseek-v4-pro",
+      "effort": "max",
+      "access": "read-only",
+      "timeout_s": 900,
+      "requires_no_yes_man": true,
+      "fallbacks": [],
+      "fallback_policy": "forbid",
+      "roles": ["enumerative-review", "per-file-audit", "independent-review"],
+      "preflight": "opencode Zen catalog must expose the pinned max variant; this model also advertises high, which the dispatcher must never build"
     },
     "fable-advisor": {
       "kind": "claude",

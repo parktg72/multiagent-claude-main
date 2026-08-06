@@ -16,6 +16,9 @@ __pycache__/
 .env
 .env.local
 
+# Subagent-driven-development scratch: ledgers, briefs, review packages.
+.superpowers/
+
 # Machine-local agent session settings and their atomic-write temp files.
 # The temp form appears mid-write and must not be caught by `git add -A`.
 .claude/settings.local.json

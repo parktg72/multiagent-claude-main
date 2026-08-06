@@ -15,10 +15,17 @@ Worker pool is fixed:
 - `codex-terra` — `gpt-5.6-terra`, reasoning `max`; independent read-only review.
 - `agy` — `gemini-3.1-pro-high`, effort `high`; read-only third-party,
   operations, or multimodal review after local preflight proves exact pin.
-- `kimi-reviewer` — `opencode-go/kimi-k3`, variant `max`; read-only large-context
-  review. `max` is the pinned variant by explicit human decision: the opencode
-  catalog defines no other variant for K3. Automatic variant substitution stays
-  forbidden; when the pinned variant is absent, preflight fails closed.
+- `kimi-reviewer` — `opencode/kimi-k3`, variant `max`; read-only reviewer on the
+  OpenCode Zen provider. `opencode` is the provider ID; `opencode-zen` is only its
+  display name and is not a valid pin. `max` is the pinned variant by explicit human
+  decision: the opencode catalog defines no other variant for K3. Automatic variant
+  substitution stays forbidden; when the pinned variant is absent, preflight fails
+  closed.
+- `deepseek-reviewer` — `opencode/deepseek-v4-pro`, variant `max`; read-only
+  enumerative reviewer on the same Zen provider. Unlike K3 this model's catalog
+  advertises a second variant, `high`, so it is the first pin where the
+  unenforceable `--variant` limit in `ISSUES.md` is an active exposure rather than a
+  latent one. `max` is an explicit human decision recorded on 2026-08-06.
 - `fable-advisor` — `claude-fable-5`; tools disabled, no session persistence,
   read-only advisor for important design, ambiguity, security, and regression risk.
   Runs without `--bare`, which reads neither OAuth nor keychain and therefore cannot
@@ -40,8 +47,8 @@ Worker pool is fixed:
 6. Run producer before reviewers. Run reviewers independently: never place another
    reviewer's conclusion in their input. Main alone reads private raw results and
    synthesizes final decision.
-7. Require no-yes-man verdict schema from Terra, AGY, Kimi, and Fable. Missing,
-   malformed, or rubber-stamp verdict is failure, never success.
+7. Require no-yes-man verdict schema from Terra, AGY, Kimi, DeepSeek, and Fable.
+   Missing, malformed, or rubber-stamp verdict is failure, never success.
 8. Escalate important design, ambiguity, security, or regression risk to
    `fable-advisor`; main makes final decision.
 9. Build the reviewer packet as evidence main can defend. Include the full command
@@ -106,9 +113,15 @@ remain unproven, with the wording each one permits; it is mirrored as GitHub iss
 mount looks the way it does. `CHANGELOG.md` records how the rules here were
 arrived at; it is not loaded by default and is read only when that history matters.
 
-State of the harness as of 2026-08-05: all five workers have completed a real dispatch,
+State of the harness as of 2026-08-06: all six workers have completed a real dispatch,
 the producer-reviewer pipeline has run end to end across two rounds, and `bin/worker
 preflight` reports a `live_dispatch` observation per pin. Two limits stay open.
+
+A backend can report a failed request as a successful step. On 2026-08-06 an
+`opencode/kimi-k3` dispatch exited zero with `reason: "unknown"`, zero input and output
+tokens, and no text part; only the verdict contract caught it, and an identical
+re-dispatch succeeded. Exit zero is not evidence that a model answered — read the
+token counts, and keep the output contract as the thing that decides.
 
 ## Re-entry
 

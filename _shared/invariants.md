@@ -2,7 +2,7 @@
 
 `bin/check-invariants` verifies:
 
-1. Exactly five named workers and no `claude-main` worker.
+1. Exactly six named workers and no `claude-main` worker.
 2. Exact main/worker model, effort, kind, command, access pins, and empty fallback arrays.
 3. Sol is sole workspace-write worker; Terra is read-only.
 4. Every reviewer/advisor requires no-yes-man contract.
