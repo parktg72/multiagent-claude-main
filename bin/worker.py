@@ -1511,7 +1511,7 @@ def exact_catalog_line(output: str, model: str) -> bool:
     return any(line.strip() == model for line in output.splitlines())
 
 
-def opencode_kimi_metadata(output: str) -> dict[str, Any] | None:
+def opencode_model_metadata(output: str, model_id: str) -> dict[str, Any] | None:
     decoder = json.JSONDecoder()
     for index, character in enumerate(output):
         if character != "{":
@@ -1520,7 +1520,7 @@ def opencode_kimi_metadata(output: str) -> dict[str, Any] | None:
             value, _ = decoder.raw_decode(output[index:])
         except json.JSONDecodeError:
             continue
-        if isinstance(value, dict) and value.get("id") == "kimi-k3":
+        if isinstance(value, dict) and value.get("id") == model_id:
             return value
     return None
 
@@ -1618,13 +1618,18 @@ def backend_preflight(role: str, backend: dict[str, Any], cache: PreflightCache 
         if not ok or not exact_catalog_line(catalog, str(backend.get("model"))):
             return BackendPreflight("unavailable_fail_closed", "exact AGY model is absent from catalog", startup, "unverified", "unverified", "catalog_unavailable")
         return BackendPreflight("available_pending_auth", "exact catalog token and CLI contract verified; endpoint/auth unverified", startup, "unverified", "unverified", "catalog_verified")
-    if role == "kimi-reviewer":
-        ok, catalog = cached_local_probe(active_cache, "opencode-kimi-models", ["opencode", "--pure", "models", "opencode-go", "--verbose"])
-        metadata = opencode_kimi_metadata(catalog) if ok else None
+    if kind == "opencode":
+        # The pin is `provider/model`. Deriving both from it keeps a second opencode
+        # worker a configuration change instead of another role-named branch.
+        provider, separator, model_id = str(backend.get("model", "")).partition("/")
+        if not separator or not re.fullmatch(r"[a-z0-9._-]{1,64}", provider) or not model_id:
+            return BackendPreflight("unavailable_fail_closed", "opencode model pin must be provider/model", startup, "unverified", "unverified", "model_unavailable")
+        ok, catalog = cached_local_probe(active_cache, f"opencode-models:{provider}", ["opencode", "--pure", "models", provider, "--verbose"])
+        metadata = opencode_model_metadata(catalog, model_id) if ok else None
         variants = metadata.get("variants", {}) if isinstance(metadata, dict) else {}
         if not isinstance(variants, dict) or backend.get("effort") not in variants:
-            return BackendPreflight("unavailable_fail_closed", "pinned Kimi variant absent from catalog; automatic variant substitution forbidden", startup, "unverified", "unverified", "variant_unavailable")
-        return BackendPreflight("available_pending_auth", "exact Kimi max variant and CLI contract verified; endpoint/auth unverified", startup, "unverified", "unverified", "variant_verified")
+            return BackendPreflight("unavailable_fail_closed", "pinned opencode variant absent from catalog; automatic variant substitution forbidden", startup, "unverified", "unverified", "variant_unavailable")
+        return BackendPreflight("available_pending_auth", "exact opencode model and variant plus CLI contract verified; endpoint/auth unverified", startup, "unverified", "unverified", "variant_verified")
     if role in {"codex-sol", "codex-terra"}:
         return BackendPreflight("endpoint_unverified", "exact argv contract verified; endpoint/auth intentionally uncalled", startup, "unverified", "unverified", "unverified")
     if role == "fable-advisor":
@@ -1647,7 +1652,7 @@ def invariant_issues(backends: dict[str, Any] | None = None) -> list[str]:
         "codex-sol": ("codex", "codex", "gpt-5.6-sol", "high", "workspace-write"),
         "codex-terra": ("codex", "codex", "gpt-5.6-terra", "max", "read-only"),
         "agy": ("agy", "agy", "gemini-3.1-pro-high", "high", "read-only"),
-        "kimi-reviewer": ("opencode", "opencode", "opencode-go/kimi-k3", "max", "read-only"),
+        "kimi-reviewer": ("opencode", "opencode", "opencode/kimi-k3", "max", "read-only"),
         "fable-advisor": ("claude", "claude", "claude-fable-5", None, "read-only"),
     }
     for role, (kind, command, model, effort, access) in pins.items():
@@ -1709,7 +1714,7 @@ def invariant_issues(backends: dict[str, Any] | None = None) -> list[str]:
             'codex exec --model gpt-5.6-sol -c model_reasoning_effort="high" --sandbox danger-full-access',
             'codex exec --model gpt-5.6-terra -c model_reasoning_effort="max" --sandbox read-only',
             "agy --model gemini-3.1-pro-high --effort high --mode plan --sandbox --disable-slash-commands --add-dir /input --output-format json ... --print <instruction>",
-            "opencode --pure run --model opencode-go/kimi-k3 --variant max",
+            "opencode --pure run --model opencode/kimi-k3 --variant max",
             'claude --model claude-fable-5 --print --tools "" --no-session-persistence',
         )
         if any(item not in text for item in required_argv) or "--model opus" in text:

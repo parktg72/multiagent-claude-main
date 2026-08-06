@@ -884,12 +884,27 @@ class HardenedDispatcherTests(unittest.TestCase):
         binding = worker.RuntimeBinding(prefix=["opencode"], mounts=[])
         for effort in ("high", "low", "medium", None):
             with self.subTest(effort=effort):
-                backend = {"kind": "opencode", "model": "opencode-go/kimi-k3", "effort": effort}
+                backend = {"kind": "opencode", "model": "opencode/kimi-k3", "effort": effort}
                 with self.assertRaises(worker.SchemaError):
                     worker.build_inner_command(backend, binding, True, "/input/review-input.json")
-        pinned = {"kind": "opencode", "model": "opencode-go/kimi-k3", "effort": "max"}
+        pinned = {"kind": "opencode", "model": "opencode/kimi-k3", "effort": "max"}
         command = worker.build_inner_command(pinned, binding, True, "/input/review-input.json")
         self.assertIn(("--variant", "max"), list(zip(command, command[1:])))
+
+    def test_opencode_preflight_fails_closed_on_a_pin_without_a_provider_prefix(self) -> None:
+        # A bare model id would make the dispatcher probe an empty provider. It must
+        # refuse rather than guess which provider was meant.
+        startup = worker.StartupProbe("available", "test stub")
+        contracts = {"kimi-reviewer": {"ok": True, "missing": []}}
+        with mock.patch.object(worker, "runtime_startup_probe", return_value=startup), \
+             mock.patch.object(worker, "cli_contracts", return_value=contracts):
+            probe = worker.backend_preflight(
+                "kimi-reviewer",
+                {"kind": "opencode", "command": "opencode", "model": "kimi-k3", "effort": "max"},
+            )
+        self.assertEqual(probe.status, "unavailable_fail_closed")
+        self.assertEqual(probe.model_acceptance, "model_unavailable")
+        self.assertIn("provider/model", probe.detail)
 
     def test_runtime_override_is_refused_outside_fixture_test_mode(self) -> None:
         # Production must never relocate the authoritative approval journal.

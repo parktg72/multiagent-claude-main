@@ -11,7 +11,7 @@ only through `bin/worker`; no `claude-main` worker and no model fallback exist.
 | `codex-sol` | `codex exec --model gpt-5.6-sol -c model_reasoning_effort="high" --sandbox danger-full-access` | only scoped writer | argv verified; one real dispatch on this pin exited zero on 2026-08-04 |
 | `codex-terra` | `codex exec --model gpt-5.6-terra -c model_reasoning_effort="max" --sandbox read-only` | read-only reviewer | argv verified; real dispatches returned schema-valid verdicts on 2026-08-04 and 2026-08-05 |
 | `agy` | `agy --model gemini-3.1-pro-high --effort high --mode plan --sandbox --disable-slash-commands --add-dir /input --output-format json ... --print <instruction>` | read-only reviewer | argv and catalog verified; a real dispatch returned a schema-valid verdict on 2026-08-04 |
-| `kimi-reviewer` | `opencode --pure run --model opencode-go/kimi-k3 --variant max --format json --dir /workspace <message> --file /input/...` | read-only reviewer | argv and catalog verified; a real dispatch returned a schema-valid verdict on 2026-08-04; `--variant` is not enforceable |
+| `kimi-reviewer` | `opencode --pure run --model opencode/kimi-k3 --variant max --format json --dir /workspace <message> --file /input/...` | read-only reviewer | argv and catalog verified against provider `opencode`; the 2026-08-04 live observation was invalidated by the repin and has not yet been replaced; `--variant` is not enforceable |
 | `fable-advisor` | `claude --model claude-fable-5 --print --tools "" --no-session-persistence` | tools disabled advisor | argv verified; a real dispatch returned a schema-valid verdict on 2026-08-05 with no tool use |
 
 Claude local changelog names `claude-opus-5`; launcher pins that exact candidate.
@@ -20,6 +20,10 @@ advertised pins, so endpoint acceptance remains unverified until a separately ap
 paid call. Kimi is pinned to `max` because the opencode catalog defines no other
 variant for K3; that pin is an explicit human decision, and the dispatcher still
 never swaps a variant on its own.
+The opencode provider ID is `opencode`; its display name is "OpenCode Zen", and
+`opencode --pure models opencode-zen` answers `Provider not found`. Reading that as
+"there is no Zen provider" is the wrong inference — the provider exists under a
+different token, and `opencode --pure auth list` shows its credential by display name.
 
 For the order of operations when actually running a task, see [USAGE.md](USAGE.md).
 How the harness reached its current shape is in [CHANGELOG.md](CHANGELOG.md).

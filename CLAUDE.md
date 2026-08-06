@@ -15,10 +15,12 @@ Worker pool is fixed:
 - `codex-terra` — `gpt-5.6-terra`, reasoning `max`; independent read-only review.
 - `agy` — `gemini-3.1-pro-high`, effort `high`; read-only third-party,
   operations, or multimodal review after local preflight proves exact pin.
-- `kimi-reviewer` — `opencode-go/kimi-k3`, variant `max`; read-only large-context
-  review. `max` is the pinned variant by explicit human decision: the opencode
-  catalog defines no other variant for K3. Automatic variant substitution stays
-  forbidden; when the pinned variant is absent, preflight fails closed.
+- `kimi-reviewer` — `opencode/kimi-k3`, variant `max`; read-only reviewer on the
+  OpenCode Zen provider. `opencode` is the provider ID; `opencode-zen` is only its
+  display name and is not a valid pin. `max` is the pinned variant by explicit human
+  decision: the opencode catalog defines no other variant for K3. Automatic variant
+  substitution stays forbidden; when the pinned variant is absent, preflight fails
+  closed.
 - `fable-advisor` — `claude-fable-5`; tools disabled, no session persistence,
   read-only advisor for important design, ambiguity, security, and regression risk.
   Runs without `--bare`, which reads neither OAuth nor keychain and therefore cannot

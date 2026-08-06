@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Strict test-only OpenCode CLI; its catalog mirrors the pinned K3 max variant."""
+"""Strict test-only OpenCode CLI; its catalog mirrors the pinned Zen K3 max variant."""
 
 from __future__ import annotations
 
@@ -30,13 +30,17 @@ def main() -> int:
         return 0
     if args == ["--pure", "--version"]:
         return startup()
-    if args == ["--pure", "models", "opencode-go", "--verbose"]:
-        print("opencode-go/kimi-k3")
+    # Only the pinned provider answers. A stale `opencode-go` probe must fail here
+    # rather than quietly returning a catalog for the provider we moved off.
+    if args == ["--pure", "models", "opencode", "--verbose"]:
+        print("opencode/kimi-k3")
         print(json.dumps({"id": "kimi-k3", "variants": {"max": {"reasoningEffort": "max"}}}))
         return 0
+    if len(args) >= 3 and args[:2] == ["--pure", "models"]:
+        return 64
     # The real CLI treats --file as an array option that consumes trailing
     # positionals, so the message must come before it. Refuse any other order.
-    expected = ["--pure", "run", "--model", "opencode-go/kimi-k3", "--variant", "max", "--format", "json", "--dir", "/workspace"]
+    expected = ["--pure", "run", "--model", "opencode/kimi-k3", "--variant", "max", "--format", "json", "--dir", "/workspace"]
     if args[: len(expected)] != expected or len(args) != len(expected) + 4:
         return 64
     message, file_flag, packet, schema = args[len(expected) :]
