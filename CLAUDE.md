@@ -115,13 +115,17 @@ arrived at; it is not loaded by default and is read only when that history matte
 
 State of the harness as of 2026-08-06: all six workers have completed a real dispatch,
 the producer-reviewer pipeline has run end to end across two rounds, and `bin/worker
-preflight` reports a `live_dispatch` observation per pin. Three limits stay open.
+preflight` reports a `live_dispatch` observation per pin. Two limits stay open.
 
 A backend can report a failed request as a successful step. On 2026-08-06 an
 `opencode/kimi-k3` dispatch exited zero with `reason: "unknown"`, zero input and output
 tokens, and no text part; only the verdict contract caught it, and an identical
-re-dispatch succeeded. Exit zero is not evidence that a model answered — read the
-token counts, and keep the output contract as the thing that decides.
+re-dispatch succeeded. Exit zero is not evidence that a model answered. `finish_dispatch`
+now reads what the backend says it spent and withholds the live observation on a
+reported zero, which covers `codex-sol` — the one worker with no verdict contract behind
+it. The check is only as good as what a backend reports: codex prints a count on stderr
+and opencode carries one in its stream, while agy and the Claude CLI report neither, and
+an unreported count is treated as unknown rather than as zero.
 
 ## Re-entry
 

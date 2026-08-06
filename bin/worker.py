@@ -1762,6 +1762,45 @@ def require_explicit_auth_for_real_call() -> None:
     raise GateError("real call requires explicit MULTIAGENT_AUTH_DIR or MULTIAGENT_ALLOW_AUTH_ENV=1")
 
 
+def reported_token_total(kind: str, stdout: bytes, stderr: bytes) -> int | None:
+    """Total tokens the backend says it spent, or None when it does not say.
+
+    Defect 11 in `tasks/INDEX.md` is a run that exited zero having answered nothing:
+    the provider reported zero tokens and emitted no content. A reviewer's verdict
+    contract catches that, but `codex-sol` has none, so its live observation would
+    otherwise rest on the exit code alone.
+
+    Measured 2026-08-06 against saved runs: codex prints `tokens used` and the count on
+    the next line of stderr, and opencode carries per-step counts in its JSONL stdout.
+    agy and the Claude CLI report neither in anything the dispatcher captures, so for
+    them this returns None and the caller has nothing to check. None means unknown; it
+    never means zero.
+    """
+    if kind == "codex":
+        text = stderr.decode("utf-8", errors="replace")
+        matches = re.findall(r"^tokens used\s*\r?\n\s*([\d,]+)\s*$", text, re.MULTILINE)
+        if not matches:
+            return None
+        return int(matches[-1].replace(",", ""))
+    if kind == "opencode":
+        total: int | None = None
+        for line in stdout.decode("utf-8", errors="replace").splitlines():
+            line = line.strip()
+            if not line.startswith("{"):
+                continue
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            counts = event.get("part", {}).get("tokens") if isinstance(event.get("part"), dict) else None
+            if not isinstance(counts, dict):
+                continue
+            step = sum(value for key, value in counts.items() if key in {"input", "output", "reasoning"} and isinstance(value, int))
+            total = step if total is None else total + step
+        return total
+    return None
+
+
 def finish_dispatch(
     plan: SandboxPlan,
     prompt: bytes,
@@ -1801,6 +1840,18 @@ def finish_dispatch(
         (output_dir / "review-verdict.json").write_text(json.dumps(verdict, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         verification["review_contract"] = "passed"
     verification["status"] = "ok"
+    # An exit code says the process ended, not that a model answered. Where the backend
+    # reports what it spent, an explicit zero means it answered nothing, and crediting
+    # the pin for that would put `observed_reachable` on a run with no evidence behind
+    # it. Unknown is not zero: a backend that reports nothing is recorded as before.
+    tokens = reported_token_total(str(backend.get("kind")), result.stdout, result.stderr)
+    verification["reported_tokens"] = "unreported" if tokens is None else tokens
+    if tokens == 0:
+        verification["live_observation"] = "withheld_zero_reported_tokens"
+        append_audit_mirror(log_path, "VERIFICATION", verification)
+        print(json.dumps({"status": "ok", "role": start_event["worker"], "raw_output": "saved", "live_observation": "withheld"}))
+        return 0
+    verification["live_observation"] = "recorded"
     record_live_observation(str(start_event["worker"]), backend, str(start_event["run"]))
     append_audit_mirror(log_path, "VERIFICATION", verification)
     print(json.dumps({"status": "ok", "role": start_event["worker"], "raw_output": "saved"}))
