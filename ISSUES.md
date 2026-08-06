@@ -50,9 +50,12 @@ only model involved.
 
 ## 2. The opencode `--variant` pin is not enforceable
 
-**Status:** open, upstream behaviour
-**Affects:** `kimi-reviewer` (`opencode-go/kimi-k3`, variant `max`)
-**Evidence:** `tasks/kimi-live-test/task.md` records this under Known Limitation
+**Status:** open, upstream behaviour; exposure became active on 2026-08-06
+**Affects:** `kimi-reviewer` (`opencode/kimi-k3`, variant `max`) and
+`deepseek-reviewer` (`opencode/deepseek-v4-pro`, variant `max`)
+**Evidence:** `tasks/kimi-live-test/task.md` records the original probe under Known
+Limitation; the catalog reading that activated it is in
+`docs/superpowers/specs/2026-08-06-opencode-zen-reviewer-split-design.md`
 
 The model half of the pin is enforced: an unknown model id is rejected server-side.
 
@@ -72,19 +75,33 @@ opencode --pure run --model opencode-go/kimi-k3 --variant definitely-not-a-varia
 No event in the JSONL stream names the variant in effect, so the dispatcher cannot
 observe which reasoning effort actually ran, nor detect a silent downgrade.
 
-**Why it matters today: barely.** The opencode catalog defines exactly one variant for
-K3, `max`, so the pinned value and any provider default coincide. The exposure is
-latent: it appears the moment K3 gains a second variant, or the pin moves to a model
-that has several — at which point `preflight` would still report `variant_verified`
-purely because the token exists in the catalog.
+**Why it matters now.** It stopped being latent. When this was filed, the only pinned
+opencode model was K3, whose catalog defines exactly one variant, so the pinned value
+and any provider default coincided and the gap could not bite. On 2026-08-06 the pool
+gained `deepseek-reviewer`, pinned to `opencode/deepseek-v4-pro`, whose catalog
+advertises both `high` and `max`. A silent downgrade from `max` to `high` is now
+representable, would change the reasoning budget of a review verdict, and would leave
+no trace in anything the dispatcher captures.
+
+The dispatcher, not the CLI, is what prevents it: `build_inner_command` raises
+`SchemaError` for any variant other than the literal `max`, independent of what
+`_shared/backends.json` says, and `test_deepseek_command_refuses_high_even_though_the_catalog_offers_it`
+holds that line. This bounds the exposure to what a provider-side default could do; it
+does not observe what actually ran.
 
 **What would resolve it.** A CLI that echoes the variant in its event stream or exit
 metadata, so the dispatcher can compare it against the pin and fail closed on a
-mismatch. Failing that, restrict `kimi-reviewer` to models whose catalog exposes a
-single variant, and make that restriction an invariant rather than a coincidence.
+mismatch.
+
+The alternative this issue previously proposed — restrict the opencode roles to models
+whose catalog exposes a single variant — was **considered and declined by explicit human
+decision on 2026-08-06**, when `deepseek-reviewer` was pinned at `max` knowing the
+variant could not be verified. Recording the refusal keeps the gap deliberate rather
+than accidental, which is the same standard issue #1 applies to auxiliary model calls.
 
 **Interim rule.** Treat `variant_verified` in preflight as "the catalog lists this
-variant", never as "this variant ran".
+variant", never as "this variant ran". For `deepseek-reviewer` say the pinned model
+produced the review; do not state the reasoning effort it ran at.
 
 ---
 
