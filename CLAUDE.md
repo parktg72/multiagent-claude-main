@@ -115,7 +115,7 @@ arrived at; it is not loaded by default and is read only when that history matte
 
 State of the harness as of 2026-08-06: all six workers have completed a real dispatch,
 the producer-reviewer pipeline has run end to end across two rounds, and `bin/worker
-preflight` reports a `live_dispatch` observation per pin. Two limits stay open.
+preflight` reports a `live_dispatch` observation per pin. Three limits stay open.
 
 A backend can report a failed request as a successful step. On 2026-08-06 an
 `opencode/kimi-k3` dispatch exited zero with `reason: "unknown"`, zero input and output
