@@ -137,6 +137,31 @@ failed in one day, which is enough to make it a rule rather than a note.
 The GitHub mirrors of issues #1 and #2 were rewritten to match, since `CLAUDE.md` claims
 that mirror relationship and a merge is the moment a stale mirror becomes public.
 
+### Rule 11 turned on the session that produced it
+
+Re-auditing the day's negative claims found that most held under a proper method —
+`preflight` really does not reach the invariant gate, traced through the call graph and
+then demonstrated with a drifted config; the five runs reporting no token count really
+had all failed another gate, four of them before the check was reached. But two did not.
+
+`CLAUDE.md` still carried "other backends do not report per-model usage at all". The
+sweep that had declared the phrasing gone everywhere searched two literal strings
+containing "at all"; this variant lacked those words and survived, in the one file
+loaded every session. A string match is not a search for a claim.
+
+The second was a remainder in the day's own fix. An exit-zero run whose output shape
+breaks reports no count, which the gate read as unknown and credited — reachable only
+where no verdict contract stands behind the run, so only on `codex-sol`, and never seen
+there. It had been seen once elsewhere: the defect-4 agy run exited zero with no count,
+because a swallowed flag had turned its JSON into prose. Observed mechanism, unobserved
+target. Closed by refusing an unreadable count where nothing else vouches for the run,
+keyed on the verdict contract rather than on a role name so a future non-reviewer
+inherits it. Replayed against every saved run, the new rule reclassifies nothing.
+
+Which is the argument for the rule. Both findings came from re-asking questions that had
+already been answered, and the second one is a hole in a fix that had been reviewed,
+tested, merged, and used to close an issue the same day.
+
 ## 2026-08-05 — first live dispatch, and what it cost to get there
 
 Before this date the harness had a passing test suite and had never run. Every backend

@@ -978,6 +978,33 @@ class HardenedDispatcherTests(unittest.TestCase):
             worker.finish_dispatch(plan, b"", 60, {"kind": "codex"}, self.tmp, log_path, start, False)
         self.assertEqual(recorded, ["codex-sol"])
 
+    def test_absent_count_withholds_only_where_no_verdict_contract_stands_behind_it(self) -> None:
+        # The agy defect-4 run exited zero reporting no count at all, because a swallowed
+        # flag turned its JSON into prose. A reviewer's verdict contract caught that one.
+        # The same shape on the worker without a verdict contract has nothing behind it,
+        # so for that worker an unreadable count is a refusal rather than an unknown.
+        recorded: list[str] = []
+        plan = worker.SandboxPlan(command=["/bin/true"], mounts=[], cwd="/workspace", environment={}, network=True)
+        log_path = self.tmp / "absent.md"
+        log_path.write_text("# Log\n", encoding="utf-8")
+        no_count = worker.RunResult(0, b"prose, not JSON\n", b"no usage line\n", 0.4, False)
+
+        def run(reviewer: bool, role: str) -> None:
+            start = {"worker": role, "model": "m", "run": "20260806T000000-1-1"}
+            with mock.patch.object(worker, "run_limited", return_value=no_count), \
+                 mock.patch.object(worker, "extract_and_validate_verdict", return_value={"verdict": "approve"}), \
+                 mock.patch.object(worker, "record_live_observation", side_effect=lambda *a: recorded.append(a[0])):
+                worker.finish_dispatch(plan, b"", 60, {"kind": "codex"}, self.tmp, log_path, start, reviewer)
+
+        run(False, "codex-sol")
+        self.assertEqual(recorded, [], "a producer run with no readable count must not credit the pin")
+        self.assertIn("withheld_unreadable_token_count", log_path.read_text(encoding="utf-8"))
+
+        # A reviewer keeps the old behaviour: its verdict already vouched for the run,
+        # and refusing here would strand backends that never report a count.
+        run(True, "codex-terra")
+        self.assertEqual(recorded, ["codex-terra"])
+
     def test_opencode_model_metadata_selects_by_id_from_a_multi_model_catalog(self) -> None:
         # The real CLI's --verbose catalog dump prints every model under a provider,
         # each preceded by a bare `provider/model` line. Both pins are `max`, so a

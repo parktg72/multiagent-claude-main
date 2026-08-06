@@ -51,16 +51,16 @@ eleven was reachable from the mock suite.
   no count at all; each is a run some other gate had already failed. Four of those five
   exited nonzero and never reached the check.
 
-  **What the fix does not close.** The fifth exited *zero* with no parseable count: the
-  defect-4 agy run, whose output was prose rather than JSON because `--print` had
-  swallowed `--output-format json`. A reviewer's verdict contract caught that one. The
-  same shape on `codex-sol` — exit zero, output shape broken so no count can be read, and
-  no verdict contract behind it — would still be credited, because an absent count is
-  read as unknown rather than as zero. Never observed on codex, which has printed
-  `tokens used` on every run that reached the model; but the mechanism that erases a
-  count has been observed once, on another backend, so the remainder is real rather than
-  theoretical. Treating an absent count as a refusal for `codex-sol` alone would close
-  it, at the cost of not crediting a good run if codex ever changes that output.
+  The fifth exited *zero* with no parseable count: the defect-4 agy run, whose output was
+  prose rather than JSON because `--print` had swallowed `--output-format json`. A
+  reviewer's verdict contract caught that one, but the same shape on a worker without one
+  would have been credited, because an absent count reads as unknown rather than as zero.
+  Closed the same day by refusing an unreadable count where no verdict contract stands
+  behind the run — keyed on the contract, not on a role name, so `codex-sol` is covered
+  today and any future non-reviewer inherits it. A reviewer keeps the old behaviour,
+  since refusing there would strand a backend that stops reporting. Replayed against
+  every run in this index, accounting for the four that exit nonzero and never reach the
+  check, the new rule reclassifies nothing.
 
 ## Pipeline run
 
