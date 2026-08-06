@@ -102,10 +102,12 @@ first. These are opposite rules for the same job.
 
 Pins are narrower than they look. A model pin is enforced server-side for codex,
 opencode, and agy, but it is not exclusive: the Claude CLI reported one small internal
-`claude-haiku-4-5` call alongside the pinned model, and other backends do not report
-per-model usage at all. The opencode `--variant` pin is not enforceable — an invalid
-variant is accepted silently and no event states the variant in effect. Say what is
-verified rather than what is configured.
+`claude-haiku-4-5` call alongside the pinned model. Every backend reports what a run
+spent in total; only the Claude CLI breaks that down per model, and that run's total
+excluded the auxiliary call rather than folding it in, so elsewhere such a call is
+invisible even in the figure reported. The opencode `--variant` pin is not enforceable —
+an invalid variant is accepted silently and no event states the variant in effect. Say
+what is verified rather than what is configured.
 
 Each backend declares the single credential file it needs, copied into the sandbox
 home through a descriptor. There is no blanket auth mount: an undeclared kind fails
