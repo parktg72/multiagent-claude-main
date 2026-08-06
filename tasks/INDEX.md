@@ -34,6 +34,13 @@ was reachable from the mock suite.
   catalog defines only `max`, so the gap was latent until `deepseek-reviewer` was
   pinned to a model whose catalog also offers `high`. Recorded in
   `kimi-live-test/task.md` and `ISSUES.md`.
+- `codex-sol`'s live observation rests on the exit code alone. It is the one worker
+  with `requires_no_yes_man: false`, so no verdict contract stands between a zero-exit
+  run and `.runtime/live/codex-sol.json`. Defect 11 above proves a backend can exit
+  zero having answered nothing; that was opencode, not codex, and the gap is that the
+  harness could not tell either way. codex reports `tokens used` on stderr, which the
+  dispatcher already saves, so the fix is available where the gap is. Recorded in
+  `ISSUES.md`.
 
 ## Pipeline run
 

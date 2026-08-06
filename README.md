@@ -30,9 +30,10 @@ For the order of operations when actually running a task, see [USAGE.md](USAGE.m
 How the harness reached its current shape is in [CHANGELOG.md](CHANGELOG.md).
 Known gaps between what is pinned and what can be proven are tracked in
 [ISSUES.md](ISSUES.md) and filed as
-[#1 a model pin is not exclusive](https://github.com/parktg72/multiagent-claude-main/issues/1)
+[#1 a model pin is not exclusive](https://github.com/parktg72/multiagent-claude-main/issues/1),
+[#2 the opencode variant pin is not enforceable](https://github.com/parktg72/multiagent-claude-main/issues/2),
 and
-[#2 the opencode variant pin is not enforceable](https://github.com/parktg72/multiagent-claude-main/issues/2).
+[#3 codex-sol's live observation rests on the exit code alone](https://github.com/parktg72/multiagent-claude-main/issues/3).
 
 ## Safe Start — No Model Calls
 
@@ -236,11 +237,13 @@ packet content where a host process list could read it.
 
 Preflight proves a flag appears in `--help`; it cannot prove the flag is honoured.
 Treat a backend as usable only after one real dispatch, and read `live_dispatch` for
-whether that has happened on the current pin. Two limits stay unresolved and are
+whether that has happened on the current pin. Three limits stay unresolved and are
 recorded rather than papered over: a model pin is not exclusive — the Claude CLI
 reported one small internal `claude-haiku-4-5` call beside the pinned model, and other
-backends do not report per-model usage at all — and the opencode `--variant` pin is not
-enforceable, since an invalid variant is accepted silently and no event states what ran.
+backends do not report per-model usage at all; the opencode `--variant` pin is not
+enforceable, since an invalid variant is accepted silently and no event states what ran;
+and `codex-sol`'s live observation rests on the exit code alone, because it is the one
+worker with no verdict contract standing between a zero-exit run and the record.
 
 One suite check is not hermetic: the AGY catalog test runs the real `agy models`
 command, which reaches a remote model index. It fails only when that CLI runs and
