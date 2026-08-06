@@ -40,11 +40,11 @@ def main() -> int:
         return 0
     if len(args) >= 3 and args[:2] == ["--pure", "models"]:
         return 64
-    if len(args) < 4 or args[:3] != ["--pure", "run", "--model"] or args[3] not in {"opencode/kimi-k3", "opencode/deepseek-v4-pro"}:
+    if len(args) < 3 or args[:2] != ["run", "--model"] or args[2] not in {"opencode/kimi-k3", "opencode/deepseek-v4-pro"}:
         return 64
     # The real CLI treats --file as an array option that consumes trailing
     # positionals, so the message must come before it. Refuse any other order.
-    expected = ["--pure", "run", "--model", args[3], "--variant", "max", "--format", "json", "--dir", "/workspace"]
+    expected = ["run", "--model", args[2], "--variant", "max", "--format", "json", "--dir", "/workspace"]
     if args[: len(expected)] != expected or len(args) != len(expected) + 4:
         return 64
     message, file_flag, packet, schema = args[len(expected) :]

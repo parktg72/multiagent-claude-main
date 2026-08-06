@@ -11,8 +11,8 @@ only through `bin/worker`; no `claude-main` worker and no model fallback exist.
 | `codex-sol` | `codex exec --model gpt-5.6-sol -c model_reasoning_effort="high" --sandbox danger-full-access` | only scoped writer | argv verified; real dispatches applied producer edits on 2026-08-04 and 2026-08-05, the latter being the recorded observation |
 | `codex-terra` | `codex exec --model gpt-5.6-terra -c model_reasoning_effort="max" --sandbox read-only` | read-only reviewer | argv verified; real dispatches returned schema-valid verdicts on 2026-08-04 and 2026-08-05 |
 | `agy` | `agy --model gemini-3.1-pro-high --effort high --mode plan --sandbox --disable-slash-commands --add-dir /input --output-format json ... --print <instruction>` | read-only reviewer | argv and catalog verified; real dispatches returned schema-valid verdicts on 2026-08-04 and 2026-08-05, the latter being the recorded observation |
-| `kimi-reviewer` | `opencode --pure run --model opencode/kimi-k3 --variant max --format json --dir /workspace <message> --file /input/...` | read-only reviewer | argv and catalog verified against provider `opencode`; a real dispatch returned a schema-valid verdict on 2026-08-06, after one transient zero-token failure the CLI reported as success; `--variant` is not enforceable |
-| `deepseek-reviewer` | `opencode --pure run --model opencode/deepseek-v4-pro --variant max --format json --dir /workspace <message> --file /input/...` | read-only reviewer | argv and catalog verified against provider `opencode`; a real dispatch returned a schema-valid verdict on 2026-08-06; `--variant` is not enforceable, and this is the first pin whose catalog also offers `high` |
+| `kimi-reviewer` | `opencode run --model opencode/kimi-k3 --variant max --format json --dir /workspace <message> --file /input/...` | read-only reviewer | argv and catalog verified against provider `opencode`; a real dispatch returned a schema-valid verdict on 2026-08-06, after one transient zero-token failure the CLI reported as success; `--variant` is not enforceable |
+| `deepseek-reviewer` | `opencode run --model opencode/deepseek-v4-pro --variant max --format json --dir /workspace <message> --file /input/...` | read-only reviewer | argv and catalog verified against provider `opencode`; a real dispatch returned a schema-valid verdict on 2026-08-06; `--variant` is not enforceable, and this is the first pin whose catalog also offers `high` |
 | `fable-advisor` | `claude --model claude-fable-5 --print --tools "" --no-session-persistence` | tools disabled advisor | argv verified; a real dispatch returned a schema-valid verdict on 2026-08-05 with no tool use |
 
 Claude local changelog names `claude-opus-5`; launcher pins that exact candidate.
@@ -163,6 +163,26 @@ no equivalent of codex `--output-schema` or agy `--json-schema`; a live run retu
 well-formed verdict carrying an undeclared extra key, which `additionalProperties`
 false correctly rejected. Its answer also arrives inside a JSONL event stream at
 `part.text`, not as a bare JSON object.
+
+## Why opencode Runs Without --pure
+
+A run under `--pure` never reaches a model. Every attempt returned a server-side
+`{"type":"error", ... "Unexpected server error"}` with a distinct `ref`, and dropping
+the flag made the identical call succeed and report tokens. The failure is total rather
+than selective: a free model fails, and so does an unrelated OAuth provider, which rules
+out quota, billing, and the OpenCode gateway alone.
+
+The mechanism is not established, and one observation cuts against the obvious guess.
+`opencode --pure auth list` still lists every credential, so the flag is not simply
+hiding `auth.json`; something else it suppresses is needed by `run` and not by
+`auth list`. The error carries no local detail.
+
+`--pure` is kept where it was proven to work and where no session is involved: the
+`--pure --version` startup probe and the `--pure models <provider> --verbose` catalog
+probe, both of which return authenticated results on a signed-in host. What the flag was
+bought for on a run — keeping host configuration and plugins out of a worker — is
+already supplied by the sandbox's empty fake home, which is the same reasoning that
+removed `--bare` from the Claude advisor below.
 
 ## Why the Claude Advisor Runs Without --bare
 

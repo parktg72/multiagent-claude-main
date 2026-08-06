@@ -1157,8 +1157,15 @@ def build_inner_command(backend: dict[str, Any], binding: RuntimeBinding, review
         # "File not found: <message>". The message must precede --file. Note this is
         # the opposite of agy, whose prompt flag must come last — the ordering rule is
         # per CLI and only a live call proves it.
+        # `--pure` is deliberately absent from a run. Under it every model on every
+        # provider returns a server-side "Unexpected server error" — a free model and
+        # an unrelated OAuth provider fail identically, so it is not quota, billing,
+        # or one gateway. Dropping the flag makes the same call succeed. What it was
+        # bought, keeping host config and plugins out of a worker, is supplied by the
+        # sandbox's empty fake home, the same argument that removed `--bare` from the
+        # Claude advisor. The flag still works for `--version` and `models`, which
+        # need no session, and those probes keep it.
         return binding.prefix + [
-            "--pure",
             "run",
             "--model",
             model,
@@ -1719,8 +1726,8 @@ def invariant_issues(backends: dict[str, Any] | None = None) -> list[str]:
             'codex exec --model gpt-5.6-sol -c model_reasoning_effort="high" --sandbox danger-full-access',
             'codex exec --model gpt-5.6-terra -c model_reasoning_effort="max" --sandbox read-only',
             "agy --model gemini-3.1-pro-high --effort high --mode plan --sandbox --disable-slash-commands --add-dir /input --output-format json ... --print <instruction>",
-            "opencode --pure run --model opencode/kimi-k3 --variant max",
-            "opencode --pure run --model opencode/deepseek-v4-pro --variant max",
+            "opencode run --model opencode/kimi-k3 --variant max",
+            "opencode run --model opencode/deepseek-v4-pro --variant max",
             'claude --model claude-fable-5 --print --tools "" --no-session-persistence',
         )
         if any(item not in text for item in required_argv) or "--model opus" in text:
