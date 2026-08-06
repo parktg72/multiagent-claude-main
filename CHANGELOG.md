@@ -5,13 +5,18 @@ stays short; this file records how the rules were arrived at and is read only wh
 someone wants that. Published commit history begins at a squashed root commit, so the
 work below predates what `git log` shows.
 
-## 2026-08-06 — repin to opencode Zen, a sixth worker, and two lessons about exit codes
+## 2026-08-06 — repin to opencode Zen, a sixth worker, and three negatives that were not
 
 The day's request was small: move the opencode reviewer to the Zen provider and let the
 pool use Kimi K3 or DeepSeek V4 Pro by role. Both landed. What made the day worth
 recording is that neither the repin nor the split is the interesting part — a live
 dispatch found an eleventh defect, that defect opened and closed an issue, and the fix
-for it was wrong the first time in a way only a second question exposed.
+for it was wrong twice, each time because a question that looked settled was not.
+
+The sections below are in the order things happened, and several were superseded within
+hours. Where that is so, the section says what later narrowed it rather than being
+rewritten — how a rule was arrived at is the point of this file, and a tidy account of
+the destination would lose the three wrong turns that produced rule 11.
 
 ### The provider that was not a provider
 
@@ -54,6 +59,10 @@ as a stand-in for success, after the `agy --print` defect below, and it is why
 observation, and that for a reviewer it is the verdict contract, not the exit code,
 that supplies the missing proof.
 
+*Superseded the same day.* That wording covered reviewers only, which was the whole
+answer for about an hour. The next section asks what stands behind the worker that is
+not one.
+
 ### The exit code stopped being enough
 
 Kimi is a reviewer, which is the only reason defect 11 was caught. That prompted the
@@ -71,6 +80,11 @@ child, the observation describes the evidence, and conflating them would make a 
 round look broken when main can simply read the tree. An unreported count stays unknown
 rather than zero — five saved runs report nothing, and every one of them is a run that
 another gate had already failed.
+
+*Narrowed twice after this.* The check as described here read two backends of four, for
+the reason the next section gives. And "unreported stays unknown" turned out to be right
+only where something else vouches for the run; the last section of this entry says what
+replaced it and why the distinction is not cosmetic.
 
 ### The check that looked in one place
 
