@@ -44,6 +44,102 @@ harness sees anything. Either `cd` into the repository first, or spell the binar
 
 The `--task tasks/<name>/task.md` in that command means the same file from anywhere.
 
+## Running the suite where Bubblewrap exists
+
+`bin/worker` builds a Bubblewrap namespace for every dispatch, and Bubblewrap is built
+on Linux user namespaces. There is no macOS port and no equivalent, so on darwin the
+dispatcher fails closed before it reaches a backend:
+
+```
+$ bin/worker preflight --allow-unavailable
+worker: required executable unavailable: bwrap
+
+$ bash tests/run.sh
+Ran 14 tests — FAILED (failures=10)
+  worker: sandbox startup probe failed: sandbox runtime binding unavailable
+```
+
+Every one of those failures is that single cause. `bin/claude-main` is unaffected — it
+is a plain launcher with no sandbox — so the orchestrator half runs anywhere and only
+the six workers need Linux.
+
+Do not try to make those tests pass on darwin. Swapping Bubblewrap for `sandbox-exec`
+or adding a no-sandbox path would remove the boundary the dispatcher exists to enforce.
+`build_inner_command` fails closed on purpose.
+
+### Container recipe
+
+What the image needs, in the order it was installed on `ubuntu:24.04`. This is a record
+of what was run, not a Dockerfile that has been built as one file — assemble it however
+your tooling prefers.
+
+1. apt: `bubblewrap python3 git ca-certificates procps`, plus `curl xz-utils` for the
+   steps below. Bubblewrap and Python are the only ones `tests/run.sh` itself needs.
+2. node, for three of the four backend CLIs. Take the tarball matching the **container's**
+   architecture, not the host's, from `https://nodejs.org/dist/`, and unpack it into
+   `/usr/local` with `--strip-components=1`.
+3. `npm i -g @anthropic-ai/claude-code @openai/codex opencode-ai`.
+4. `agy` is a Go binary, not an npm package. `https://antigravity.google/cli/install.sh`
+   names an updater whose per-platform manifest carries the download URL and a sha512:
+
+   ```sh
+   curl -fsSL <updater>/manifests/linux_arm64.json
+   # -> {"version": "...", "url": "...", "sha512": "..."}
+   ```
+
+   Verify that checksum before installing. `linux_arm64` and `linux_amd64` both answer
+   200; `linux_arm64_musl` is 404, so this is glibc only. The tarball holds one file,
+   `antigravity`, which installs as `agy`.
+
+Read that install script rather than piping it to a shell.
+
+Without a CLI present, its role reports `unavailable_fail_closed` with
+`sandbox_startup: unavailable`, and four `test_hardening.py` cases error on
+`require_binary`. Installing all four clears both.
+
+### Bubblewrap needs a privileged container
+
+Under OrbStack only `--privileged` works. Tested and rejected:
+
+| docker flags | result |
+|---|---|
+| (default) | `No permissions to create new namespace` |
+| `--security-opt seccomp=unconfined` | `Can't mount proc on /newroot/proc: Operation not permitted` |
+| `+ --cap-add SYS_ADMIN` | same |
+| `+ --security-opt apparmor=unconfined` | same |
+| `--privileged` | works |
+
+Not an exhaustive matrix — `--security-opt systempaths=unconfined` is untested and is the
+usual answer to that `proc` denial, since Docker masks `/proc` paths by default.
+
+**Put no credentials in that container.** No `MULTIAGENT_AUTH_DIR`, no
+`MULTIAGENT_ALLOW_AUTH_ENV=1`, no `MULTIAGENT_ALLOW_BILLABLE=1`. A privileged container
+can reach the VM, which is the exposure the copy-not-bind credential design exists to
+prevent. Clone the repository fresh inside the container rather than bind-mounting your
+working copy read-write, so a root-owned `.runtime` never lands in it.
+
+### What a credential-free run should report
+
+```
+tests/run.sh   test_worker.py 14/14 OK
+               test_hardening.py OK (skipped=1)
+```
+
+The skip is `local agy catalog probe unavailable (exit)` — a signed-out `agy` cannot
+answer the pin question, so the test skips rather than failing. That is the expected
+outcome here, not a masked failure.
+
+`preflight` reports `model_calls: 0`, every role's `cli_contracts.ok` true, every
+`sandbox_startup` available, and `scope-sandbox available`. The three codex roles reach
+`endpoint_unverified`, which is the best status any role can reach without a billable
+call. The rest fail closed for reasons that are all absence of credentials rather than
+pin drift: `agy` at `catalog_unavailable`, `deepseek-reviewer` at `variant_unavailable`
+(see `ISSUES.md` and issue #5 — a signed-out opencode returns a smaller catalog rather
+than an error), and `claude-main` at `candidate_unavailable`, since a fresh CLI install
+has no local changelog to read a candidate from.
+
+Reading any of those as a broken pin is the mistake this section exists to prevent.
+
 ## Who does what
 
 | Step | Who |

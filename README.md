@@ -57,6 +57,10 @@ bin/worker preflight --allow-unavailable
 bin/claude-main
 ```
 
+The first two need Bubblewrap, which is Linux-only, so on macOS they fail closed rather
+than running — `bin/claude-main` is unaffected. `USAGE.md` has the container recipe and
+what a credential-free run should report.
+
 Preflight also reports a `live_dispatch` field per worker. When an earlier real
 dispatch on the **same pin** exited zero, the dispatcher records the pin digest and a
 timestamp under private runtime storage, and preflight surfaces it as
