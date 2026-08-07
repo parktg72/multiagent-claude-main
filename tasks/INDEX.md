@@ -42,13 +42,17 @@ before anything was spent. None of the twelve was reachable from the mock suite.
   stdout redirected to a regular file produced zero bytes at 240s and 300s, while the same
   command through a subprocess pipe returned in about 5s.
 
-  Two explanations were proposed and both are refuted by measurement. A difference
-  between the CLI's preflight path and a direct call: `backend_preflight("agy", ...)`
-  called directly returned `available_pending_auth` while the CLI reported failure, but
-  the CLI then passed three times unchanged, so the two paths do not differ. Rate
-  limiting from rapid repeats: twelve consecutive probes with no pause returned the pinned
-  model twelve times. **The cause is not known**, and the failures have not been
-  reproduced on demand. The
+  Two explanations were proposed and neither is settled. Rate limiting from rapid
+  repeats is the weaker of the two: twelve consecutive probes with no pause returned the
+  pinned model twelve times. A difference between the CLI's preflight path and a direct
+  call remains open. It was called refuted here on the grounds that the CLI later passed
+  three times, which is not a refutation — the CLI also fails in bursts, and both are
+  true at once. The experiment that would decide it is to measure both inside a failing
+  window; eight interleaved pairs of CLI preflight and direct probe all passed on both
+  sides, so it never fired. Across the session no direct probe has failed and the CLI has
+  failed in three bursts, but every direct probe ran during a passing window, so that
+  asymmetry is not evidence either. **The cause is not known**, and the failures have not
+  been reproduced on demand. The
   failure direction is safe: an empty catalog reads as an absent pin and refuses to
   spend. The cost is that a green preflight is not reproducible, so "agy is available"
   is a statement about one run and not about the pin. Found because three reviewers
