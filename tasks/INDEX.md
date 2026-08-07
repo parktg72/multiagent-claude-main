@@ -37,9 +37,18 @@ before anything was spent. None of the twelve was reachable from the mock suite.
   returned `unavailable_fail_closed` with "exact AGY model is absent from catalog", while
   five consecutive runs minutes later all returned `catalog_verified`. One `tests/run.sh`
   took 93s and skipped the live catalog test because the probe did not answer; the next
-  took 8s and did not skip. Separately, `agy models` with stdout redirected to a regular
-  file produced zero bytes at 240s and 300s, while the same command through a subprocess
-  pipe returned in about 5s — unexplained, and not established as the same cause. The
+  took 8s and did not skip. Then five consecutive preflight runs all failed, and minutes
+  later three in a row passed, same binary and same commit. Separately, `agy models` with
+  stdout redirected to a regular file produced zero bytes at 240s and 300s, while the same
+  command through a subprocess pipe returned in about 5s.
+
+  Two explanations were proposed and both are refuted by measurement. A difference
+  between the CLI's preflight path and a direct call: `backend_preflight("agy", ...)`
+  called directly returned `available_pending_auth` while the CLI reported failure, but
+  the CLI then passed three times unchanged, so the two paths do not differ. Rate
+  limiting from rapid repeats: twelve consecutive probes with no pause returned the pinned
+  model twelve times. **The cause is not known**, and the failures have not been
+  reproduced on demand. The
   failure direction is safe: an empty catalog reads as an absent pin and refuses to
   spend. The cost is that a green preflight is not reproducible, so "agy is available"
   is a statement about one run and not about the pin. Found because three reviewers

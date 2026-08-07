@@ -648,7 +648,38 @@ class HardenedDispatcherTests(unittest.TestCase):
         # Known and deliberate: the progress line has no tab, so it satisfies a pin
         # equal to it. Only a model literally named "Fetching available models..."
         # could reach that, and the rule stays simpler for not special-casing it.
+        # Unchanged by the tabular branch — the previous function did this too.
         self.assertTrue(worker.exact_catalog_line(catalog, "Fetching available models..."))
+
+    def agy_preflight_over_catalog(self, catalog: str) -> worker.BackendPreflight:
+        """Run the real agy preflight path with the catalog probe pinned to `catalog`.
+
+        Seeds the whole cache so nothing reaches the network or a CLI: the point is
+        the wiring from the probe's stdout through cached_local_probe into
+        exact_catalog_line, which the matcher unit tests do not cover.
+        """
+        cache = worker.PreflightCache()
+        cache.contracts = {"agy": {"ok": True, "missing": []}}
+        cache.startup = {"agy": worker.StartupProbe("available", "seeded for this test")}
+        cache.local_probes["agy-models"] = (True, catalog)
+        return worker.backend_preflight("agy", worker.backend_for("agy"), cache)
+
+    def test_agy_preflight_accepts_the_recorded_catalog_through_the_real_path(self) -> None:
+        catalog = (Path(__file__).resolve().parent / "fixtures" / "agy-models-catalog.txt").read_text(encoding="utf-8")
+        verified = self.agy_preflight_over_catalog(catalog)
+        self.assertEqual(verified.model_acceptance, "catalog_verified", verified.detail)
+        self.assertEqual(verified.status, "available_pending_auth", verified.detail)
+
+    def test_agy_preflight_still_fails_closed_when_the_catalog_lacks_the_pin(self) -> None:
+        # Same wiring, one line removed. Without this the test above would pass for a
+        # matcher that returned True unconditionally.
+        catalog = (Path(__file__).resolve().parent / "fixtures" / "agy-models-catalog.txt").read_text(encoding="utf-8")
+        pinned = worker.backend_for("agy")["model"]
+        without = "\n".join(line for line in catalog.splitlines() if not line.startswith(pinned + "\t"))
+        self.assertNotIn(pinned + "\t", without)
+        refused = self.agy_preflight_over_catalog(without)
+        self.assertEqual(refused.model_acceptance, "catalog_unavailable", refused.detail)
+        self.assertEqual(refused.status, "unavailable_fail_closed", refused.detail)
 
     def test_probe_environment_retains_home_but_worker_sandbox_does_not(self) -> None:
         captured: dict[str, dict[str, str]] = {}
