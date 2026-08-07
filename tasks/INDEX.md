@@ -148,6 +148,10 @@ it, a packet defect under rule 9.
 | agy-catalog-review | `codex-terra` | 20260807T152141 | **ok** — verdict conditional |
 | agy-catalog-review | `codex-luna` | 20260807T152517 | **ok** — verdict conditional |
 | agy-catalog-review | `fable-advisor` | 20260807T152828 | **ok** — verdict conditional |
+| agy-catalog-review | `codex-terra` | 20260807T160207 | **ok** — verdict reject, round two |
+| agy-catalog-review | `codex-luna` | 20260807T160636 | **ok** — verdict conditional, round two |
+| agy-catalog-review | `fable-advisor` | 20260807T161156 | **fail** — main's shell wrapper timed out and killed the dispatch; no output |
+| agy-catalog-review | `fable-advisor` | 20260807T161304 | **ok** — verdict conditional, round two |
 | live-restore-review | `codex-terra` | 20260807T140457 | **ok** — verdict reject |
 | live-restore-review | `agy` | 20260807T150118 | **ok** — verdict reject, after defect 12 was fixed |
 | live-restore-review | `codex-luna` | 20260807T141016 | **ok** — verdict reject |
