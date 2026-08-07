@@ -622,6 +622,17 @@ class HardenedDispatcherTests(unittest.TestCase):
         self.assertFalse(worker.exact_catalog_line("gemini-3.1-pro-high-extra", "gemini-3.1-pro-high"))
         self.assertFalse(worker.exact_catalog_line("gemini-3.1-pro-low", "gemini-3.1-pro-high"))
 
+    def test_exact_catalog_line_accepts_agy_tabular_entry(self) -> None:
+        catalog = "Fetching available models...\ngemini-3.1-pro-high\tGemini 3.1 Pro (High)\n"
+        self.assertTrue(worker.exact_catalog_line(catalog, "gemini-3.1-pro-high"))
+
+    def test_exact_catalog_line_rejects_malformed_first_fields(self) -> None:
+        model = "gemini-3.1-pro-high"
+        self.assertFalse(worker.exact_catalog_line(f"{model} Fetching available models...", model))
+        self.assertFalse(worker.exact_catalog_line(f"{model}\t", model))
+        self.assertFalse(worker.exact_catalog_line(f"{model}-extra\tGemini 3.1 Pro (High)", model))
+        self.assertFalse(worker.exact_catalog_line(f"{model}\tGemini 3.1 Pro (High)\textra", model))
+
     def test_probe_environment_retains_home_but_worker_sandbox_does_not(self) -> None:
         captured: dict[str, dict[str, str]] = {}
 

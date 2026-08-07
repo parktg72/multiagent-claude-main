@@ -1554,7 +1554,15 @@ def run_probe(command: list[str], *, environment: dict[str, str] | None = None) 
 
 
 def exact_catalog_line(output: str, model: str) -> bool:
-    return any(line.strip() == model for line in output.splitlines())
+    for line in output.splitlines():
+        if "\t" not in line:
+            if line.strip() == model:
+                return True
+            continue
+        fields = line.split("\t")
+        if len(fields) == 2 and fields[0] == model and fields[1].strip():
+            return True
+    return False
 
 
 def opencode_model_metadata(output: str, model_id: str) -> dict[str, Any] | None:
