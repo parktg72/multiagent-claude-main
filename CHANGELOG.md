@@ -48,6 +48,18 @@ So the repin broke the pin, and the catalog said so the whole time. Rather than 
 back to `opencode-go`, the role was replaced: `codex-luna`, `gpt-5.6-luna` at reasoning
 `max`, read-only, mirroring `codex-terra`'s record in every other field.
 
+**Contradicted 2026-08-07, and left standing.** Measured twice that day,
+`opencode --pure models opencode --verbose` lists `kimi-k3` with `providerID` `opencode`
+and the single variant `max`. So the two sentences above are wrong about the catalog:
+the Zen listing does carry K3, and the catalog did not say so the whole time. What holds
+is the live evidence — `opencode/kimi-k3` returned the server-side refusal while three
+other model ids answered — so the model is listed and not served, and replacing the role
+was still right for the reason that mattered. Whether the listing changed between the
+two dates cannot be established from here; nothing captured the 2026-08-06 catalog. The
+entry stays as written, per the rule one section above, and the correction is filed
+rather than tidied into it. The same conflation reached `ISSUES.md` and GitHub issue #2
+the next day and is corrected there too.
+
 That trade is worth naming. The opencode and AGY roles carry a catalog probe that
 proves the pinned model exists before a dispatch. Codex has no non-interactive model
 listing, so `codex-luna` carries an argv contract and nothing else, and its pin rests on

@@ -76,10 +76,11 @@ Limitation; the catalog reading that activated it is in
 `docs/superpowers/specs/2026-08-06-opencode-zen-reviewer-split-design.md`, and the repin
 that widened it is in `CHANGELOG.md` under "`deepseek-reviewer` moved to V4 Flash"
 
-The two transcripts below name provider `opencode-go` and model `kimi-k3` — the pin the
-reviewer carried when they were captured, on a role that has since left the pool. They
-are records of commands that really ran; leave those tokens alone rather than updating
-them to the current `opencode/deepseek-v4-flash` pin.
+Both transcripts below name provider `opencode-go`; the second also names model
+`kimi-k3`, the pin the reviewer carried when they were captured, on a role that has since
+left the pool. The first names a deliberately invalid model id and no real pin at all.
+They are records of commands that really ran; leave those tokens alone rather than
+updating them to the current `opencode/deepseek-v4-flash` pin.
 
 The model half of the pin is enforced: an unknown model id is rejected server-side.
 
@@ -106,10 +107,20 @@ the pool gained `deepseek-reviewer` at `opencode/deepseek-v4-pro`, whose catalog
 advertises `high` beside `max`, and was repinned the same day to
 `opencode/deepseek-v4-flash`, which advertises both `low` and `high` beside `max`. Read
 back off `opencode --pure models opencode --verbose` on 2026-08-07: `deepseek-v4-flash`
-lists `high`, `low`, `max`; `deepseek-v4-pro` lists `high`, `max`; `kimi-k3` is absent
-from this provider entirely. A silent downgrade from `max` is now representable in two
-directions rather than one, would change the reasoning budget of a review verdict, and
-would leave no trace in anything the dispatcher captures.
+lists `high`, `low`, `max`; `deepseek-v4-pro` lists `high`, `max`. A silent downgrade from
+`max` is now representable in two directions rather than one, would change the reasoning
+budget of a review verdict, and would leave no trace in anything the dispatcher captures.
+
+**Correction, 2026-08-07.** An earlier revision of this paragraph claimed the same
+readback showed `kimi-k3` absent from provider `opencode`. It does not. The listing
+carries `kimi-k3` with `providerID` `opencode` and the single variant `max`, measured
+twice that day. What is true is narrower: the catalog lists the model and the server
+refuses to serve it. `CHANGELOG.md` records a live `opencode/kimi-k3` dispatch on
+2026-08-06 returning exactly the server-side refusal this entry documents above as how an
+unknown model id fails. Catalog presence, reachability, and pool membership are three
+separate facts, and the removed sentence collapsed them. It was written as though read
+off the command while actually carried over from prose; four independent reviewers caught
+it in one round on 2026-08-07, which is what that round was for.
 
 `kimi-reviewer` left the pool the same day, replaced by `codex-luna` on the codex
 backend, which this issue does not reach. So the exposure narrowed to a single worker and
