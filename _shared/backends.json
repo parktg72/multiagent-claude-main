@@ -47,7 +47,7 @@
       "fallbacks": [],
       "fallback_policy": "forbid",
       "roles": ["third-party-review", "multimodal", "operations-analysis"],
-      "preflight": "agy models must contain exact full-line model token; CLI flags must all be present"
+      "preflight": "agy models must contain the exact model id either as a tab-free line that trims to it, or, matched without trimming, as the first of exactly two tab-separated fields whose second field is not blank; CLI flags must all be present"
     },
     "codex-luna": {
       "kind": "codex",
