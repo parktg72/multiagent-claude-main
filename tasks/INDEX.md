@@ -22,7 +22,7 @@ before anything was spent. None of the twelve was reachable from the mock suite.
 | 9 | `fable-advisor` | `--bare` reads neither OAuth nor keychain, so this account could never authenticate — also broke `bin/claude-main` | (diagnosed before dispatch) |
 | 10 | `fable-advisor` | inlined schema was rejected because its meta-schema URL could not be resolved | `fable-live-test` run 20260805T001938 |
 | 11 | `kimi-reviewer` | **a failed request arrived as a successful step: exit 0, `reason: "unknown"`, zero input and output tokens, cost 0, after 63s with no text part.** Only the verdict contract caught it; an identical re-dispatch succeeded, so it is transient and unannounced | `zen-repin-live` run 20260806T042330 |
-| 12 | `agy` | **`exact_catalog_line` requires a bare full-line match and `agy models` emits `<id>\t<display name>`, so the pin can never verify.** Measured 2026-08-07: the probe returns in ~5s, exit 0, 12 lines, and the pinned line is `'gemini-3.1-pro-high\tGemini 3.1 Pro (High)'`. `line.strip() == model` is False; splitting on the tab gives the id. Preflight therefore reports `unavailable_fail_closed` with detail "exact AGY model is absent from catalog" while the model is present, dispatch is refused, and `test_local_agy_catalog_probe_retains_home_without_exposing_it_to_worker` fails rather than skipping — its skip path covers a probe that did not answer, and this one answers | `live-restore-review`, no run folder — refused at preflight |
+| 12 | `agy` | **`exact_catalog_line` requires a bare full-line match and `agy models` emits `<id>\t<display name>`, so the pin can never verify.** Measured 2026-08-07: the probe returns in ~5s, exit 0, 12 lines, and the pinned line is `'gemini-3.1-pro-high\tGemini 3.1 Pro (High)'`. `line.strip() == model` is False; splitting on the tab gives the id. Preflight therefore reports `unavailable_fail_closed` with detail "exact AGY model is absent from catalog" while the model is present, dispatch is refused, and `test_local_agy_catalog_probe_retains_home_without_exposing_it_to_worker` fails rather than skipping — its skip path covers a probe that did not answer, and this one answers | `live-restore-review`, no run folder — refused at preflight. Fixed under `agy-catalog-match` run 20260807T145505; `agy` dispatched successfully afterwards |
 
 ## Unresolved limits
 
@@ -89,22 +89,27 @@ the append-only rule is for.
 
 ## What the third multi-reviewer run caught
 
-`live-restore-review` restored four pins on a fresh checkout and, in the same round,
+`live-restore-review` restored five pins on a fresh checkout and, in the same round,
 found a false statement main had published. The reviewed change was commit `d095632`,
-main's own hand edit of `ISSUES.md` and this file. Four reviewers received a
-byte-identical packet, ran independently, and all four rejected on the same sentence:
+main's own hand edit of `ISSUES.md` and this file. Five reviewers received a
+byte-identical packet, ran independently, and all five rejected on the same sentence:
 `kimi-k3 is absent from this provider entirely`, contradicted by the catalog objects
 supplied in the same packet, which carry `kimi-k3` under `providerID` `opencode`.
 Re-measuring per rule 10 confirmed the reviewers and refuted main.
+
+Four ran together; `agy` ran last, after defect 12 had been fixed, and reached the same
+verdict on the same evidence without having seen any of the other four. Nothing about the
+correction changed as a result — it was already made and published — but it rests on five
+independent readings rather than four.
 
 The sentence claimed to be read off a command and was carried over from `CHANGELOG.md`
 prose instead; main's own extraction at the time had printed the model as present and was
 misread. This is rule 10 and rule 11 failing together in main's work rather than a
 worker's, which is the case the review round exists to catch and the first time it has.
 
-`deepseek-reviewer` alone found a second, smaller error the other three missed — the
+`deepseek-reviewer` alone found a second, smaller error the other four missed — the
 changed text said both fenced transcripts name `kimi-k3` when only the second does. All
-four separated the packet's unsupported claims into `unverified_claims` rather than
+five separated the packet's unsupported claims into `unverified_claims` rather than
 objecting to them, correctly: main cited `CHANGELOG.md` as evidence and did not include
 it, a packet defect under rule 9.
 
@@ -117,7 +122,9 @@ it, a packet defect under rule 9.
 | fable-live-test | `fable-advisor` | 20260805T001938 | **fail** — meta-schema URL could not be resolved |
 | fable-live-test | `fable-advisor` | 20260805T002110 | **ok** — verdict approve |
 | kimi-live-test | `kimi-reviewer` | 20260804T075406 | **fail** — --file consumed the message as a path |
+| agy-catalog-match | `codex-sol` | 20260807T145505 | **ok** — producer edit applied |
 | live-restore-review | `codex-terra` | 20260807T140457 | **ok** — verdict reject |
+| live-restore-review | `agy` | 20260807T150118 | **ok** — verdict reject, after defect 12 was fixed |
 | live-restore-review | `codex-luna` | 20260807T141016 | **ok** — verdict reject |
 | live-restore-review | `deepseek-reviewer` | 20260807T141147 | **ok** — verdict conditional |
 | live-restore-review | `fable-advisor` | 20260807T141317 | **ok** — verdict reject |
