@@ -633,6 +633,23 @@ class HardenedDispatcherTests(unittest.TestCase):
         self.assertFalse(worker.exact_catalog_line(f"{model}-extra\tGemini 3.1 Pro (High)", model))
         self.assertFalse(worker.exact_catalog_line(f"{model}\tGemini 3.1 Pro (High)\textra", model))
 
+    def test_exact_catalog_line_accepts_the_recorded_agy_output_and_only_its_own_pin(self) -> None:
+        # Real `agy models` bytes, captured 2026-08-07 through the same
+        # probe_with_status call preflight uses. The hand-written cases above state
+        # the rule; this one holds it against output nobody composed. It covers the
+        # matcher only — the wiring from probe_with_status into this function is
+        # still untested, which a reviewer asked for and this does not supply.
+        catalog = (Path(__file__).resolve().parent / "fixtures" / "agy-models-catalog.txt").read_text(encoding="utf-8")
+        self.assertTrue(worker.exact_catalog_line(catalog, "gemini-3.1-pro-high"))
+        # A truncation of the pinned id must not satisfy it, and neither must the
+        # display name that shares its row: the second column is never a model id.
+        self.assertFalse(worker.exact_catalog_line(catalog, "gemini-3.1-pro"))
+        self.assertFalse(worker.exact_catalog_line(catalog, "Gemini 3.1 Pro (High)"))
+        # Known and deliberate: the progress line has no tab, so it satisfies a pin
+        # equal to it. Only a model literally named "Fetching available models..."
+        # could reach that, and the rule stays simpler for not special-casing it.
+        self.assertTrue(worker.exact_catalog_line(catalog, "Fetching available models..."))
+
     def test_probe_environment_retains_home_but_worker_sandbox_does_not(self) -> None:
         captured: dict[str, dict[str, str]] = {}
 

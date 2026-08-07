@@ -31,6 +31,19 @@ before anything was spent. None of the twelve was reachable from the mock suite.
   spent in total, but only the Claude CLI breaks it down per model — and in that run the
   top-level total excluded the auxiliary call rather than folding it in, so on the other
   three such a call leaves no trace even in the figure they do report.
+- The AGY catalog probe is intermittent, so preflight can fail closed at random.
+  Separate from defect 12 and not fixed by it. Observed 2026-08-07 to 2026-08-08, after
+  the matcher fix and after `agy` had dispatched successfully: one `bin/worker preflight`
+  returned `unavailable_fail_closed` with "exact AGY model is absent from catalog", while
+  five consecutive runs minutes later all returned `catalog_verified`. One `tests/run.sh`
+  took 93s and skipped the live catalog test because the probe did not answer; the next
+  took 8s and did not skip. Separately, `agy models` with stdout redirected to a regular
+  file produced zero bytes at 240s and 300s, while the same command through a subprocess
+  pipe returned in about 5s — unexplained, and not established as the same cause. The
+  failure direction is safe: an empty catalog reads as an absent pin and refuses to
+  spend. The cost is that a green preflight is not reproducible, so "agy is available"
+  is a statement about one run and not about the pin. Found because three reviewers
+  refused to approve a packet whose preflight section contradicted its other evidence.
 - The opencode `--variant` pin is not enforceable: an invalid variant is accepted
   silently and no event states which variant ran. Open, upstream behaviour; exposure
   became active on 2026-08-06. Affects `deepseek-reviewer` (`opencode/deepseek-v4-flash`,
@@ -123,6 +136,9 @@ it, a packet defect under rule 9.
 | fable-live-test | `fable-advisor` | 20260805T002110 | **ok** — verdict approve |
 | kimi-live-test | `kimi-reviewer` | 20260804T075406 | **fail** — --file consumed the message as a path |
 | agy-catalog-match | `codex-sol` | 20260807T145505 | **ok** — producer edit applied |
+| agy-catalog-review | `codex-terra` | 20260807T152141 | **ok** — verdict conditional |
+| agy-catalog-review | `codex-luna` | 20260807T152517 | **ok** — verdict conditional |
+| agy-catalog-review | `fable-advisor` | 20260807T152828 | **ok** — verdict conditional |
 | live-restore-review | `codex-terra` | 20260807T140457 | **ok** — verdict reject |
 | live-restore-review | `agy` | 20260807T150118 | **ok** — verdict reject, after defect 12 was fixed |
 | live-restore-review | `codex-luna` | 20260807T141016 | **ok** — verdict reject |
