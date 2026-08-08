@@ -1,18 +1,23 @@
 # Open Issues
 
-Filed upstream as
-[#1](https://github.com/parktg72/multiagent-claude-main/issues/1) and
-[#2](https://github.com/parktg72/multiagent-claude-main/issues/2). This file holds the
+The sections below are filed upstream as
+[#1](https://github.com/parktg72/multiagent-claude-main/issues/1),
+[#2](https://github.com/parktg72/multiagent-claude-main/issues/2), and
+[#14](https://github.com/parktg72/multiagent-claude-main/issues/14). This file holds the
 long form, including the evidence paths, which stay on the machine that ran the
 dispatches.
 
-Known gaps between what the harness pins and what it can prove. Both were found by
-dispatching for real between 2026-08-04 and 2026-08-06, and both are unresolved rather
-than mitigated. Neither blocks use; each limits what a claim about a run may say.
+Known gaps between what the harness pins and what it can prove. All three were found by
+dispatching for real between 2026-08-04 and 2026-08-08, and all three are unresolved
+rather than mitigated. None blocks use; each limits what a claim about a run may say.
 
-A third gap was opened and closed the same day: `codex-sol`'s live observation used to
-rest on the exit code alone. Issue #3 has the history; the fix is in `finish_dispatch`,
-which now withholds the observation when a backend reports zero tokens spent.
+Other issues in the tracker are not mirrored here because they were closed, or because
+they are defects with a fix rather than gaps between a pin and its evidence: #3
+(`codex-sol`'s live observation rested on the exit code alone, fixed in
+`finish_dispatch`, which now withholds the observation on a reported zero), #4 (a
+signed-out `agy` failing the catalog test instead of skipping it), #6 and #7 (the
+opencode repin), and the open #5 and #10. `tasks/INDEX.md` is the index of what was found
+by dispatching; this file is only the subset that stays open as an unprovable claim.
 
 ---
 
@@ -150,9 +155,86 @@ produced the review; do not state the reasoning effort it ran at.
 
 ---
 
+## 3. The AGY catalog probe answers intermittently, so preflight fails closed at random
+
+**Status:** open, cause not known, observed 2026-08-07 to 2026-08-08
+**Affects:** `agy` (`gemini-3.1-pro-high`) — preflight only; a dispatch that starts is
+unaffected
+**Not affected:** the other five workers, whose probes did not misbehave in the same
+window
+**Related:** #4, a signed-out `agy` failing the catalog test rather than skipping it —
+a different mechanism, and this account is of an authenticated CLI
+**Evidence:** `tasks/live-restore-review/log.md` and `tasks/agy-catalog-review/log.md`
+
+`bin/worker preflight` reports `agy` as `unavailable_fail_closed` with the detail "exact
+AGY model is absent from catalog", while the model is in the catalog. Minutes later the
+same command on the same commit reports `catalog_verified`. The failures come in runs
+rather than singly.
+
+## What was measured
+
+| when | what ran | result |
+|---|---|---|
+| 2026-08-07 | 5 consecutive `bin/worker preflight` | all `catalog_verified` |
+| same session | 1 capture taken for an evidence packet | `unavailable_fail_closed` |
+| same session | 5 consecutive `bin/worker preflight` | all `unavailable_fail_closed` |
+| same session | 4 direct `probe_with_status(["agy","models"])` | all returned the pin |
+| same session | 3 consecutive `bin/worker preflight` | all `catalog_verified` |
+| same session | 12 consecutive direct probes, no pause | all returned the pin |
+| same session | 3 consecutive `bin/worker preflight` | all `unavailable_fail_closed` |
+| 2026-08-08 | 8 interleaved pairs, CLI then direct | both sides passed 8 times |
+
+One `tests/run.sh` in the failing period took 93s and skipped
+`test_local_agy_catalog_probe_retains_home_without_exposing_it_to_worker` because the
+probe did not answer; the next took 8s and did not skip.
+
+Separately, `agy models` with stdout redirected to a regular file produced zero bytes at
+240s and at 300s, while the same command through a subprocess pipe returned in about 5s.
+That observation is unexplained and is not established as the same phenomenon.
+
+## Two explanations, neither established
+
+**That the CLI's preflight path differs from a direct call.** Called refuted once and it
+should not have been. The reasoning was that `backend_preflight("agy", ...)` invoked
+directly returned `available_pending_auth` while the CLI reported failure, and that the
+CLI then passed three times — but a CLI that also fails in bursts is consistent with
+both, so that is not a refutation. Across the session no direct probe ever failed and the
+CLI failed in three bursts; every direct probe also ran during a passing window, so the
+asymmetry is not evidence either.
+
+**That rapid repeats are rate limited.** Twelve consecutive probes with no pause between
+them returned the pinned model twelve times.
+
+The deciding experiment is to measure both paths inside a failing window. Eight
+interleaved pairs all passed on both sides, so it never fired. **The cause is not known
+and the failures have not been reproduced on demand.**
+
+## Why it matters
+
+The failure direction is safe. An empty catalog reads as an absent pin, preflight fails
+closed, and no dispatch is attempted, so nothing is spent on an unverified pin. What is
+lost is reproducibility: a green preflight for `agy` is a statement about one run and not
+about the pin, and an evidence packet containing a preflight capture can disagree with
+the rest of itself depending on when it was taken. That is how this was found — three
+reviewers refused to approve a packet whose preflight section contradicted its other
+evidence, and they were right to.
+
+## What would resolve it
+
+Catching a failing window with both paths instrumented, which needs a long observation
+rather than a fix. Failing that, a probe that distinguishes "the catalog does not contain
+this pin" from "the catalog did not arrive" would turn a silent fail-closed into a stated
+one; today both land in the same `unavailable_fail_closed` with the same detail string.
+
+**Interim rule.** Do not quote a single `bin/worker preflight` run as evidence that `agy`
+is available or that it is not. Say when the capture was taken, and re-run before acting
+on either answer.
+
+---
+
 ## Reporting more
 
-Both entries follow the same shape on purpose: what was measured, what it means, what
+The entries follow the same shape on purpose: what was measured, what it means, what
 would close it, and what may be claimed meanwhile. An issue that cannot state its own
 evidence path does not belong here — put it in a task under `tasks/` and dispatch
 against it first.
