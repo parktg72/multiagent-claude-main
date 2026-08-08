@@ -10,20 +10,24 @@
 # scanner is corpus-wide, so an individual history-only document is valid.
 #
 # Deliberate limits: the document allowlist is fixed; worker authority comes from the
-# `workers` keys, while model authority is the exact `workers[*].model` values plus the
-# exact `orchestrator.model_id` in _shared/backends.json (providers, variants, and other
-# fields are not validated); only simple backtick inline-code spans are checked; and
-# Markdown constructs other than backtick fences and pipe-prefixed table rows are not
-# parsed.  Fence recognition handles only lines beginning with triple backticks, does not
-# support tilde fences, and does not validate matching fence lengths, so an unclosed fence
-# hides the remaining file.  Prose is grouped by blank lines, and Affects/policy sentence
-# and metadata boundaries are regex heuristics.  The present-tense vocabulary, type nouns,
+# `workers` keys plus the basename of the orchestrator launcher; aliases and descriptive
+# orchestrator labels are not authoritative.  Model authority is the exact
+# `workers[*].model` values plus the exact `orchestrator.model_id` in
+# _shared/backends.json (providers, variants, and other fields are not validated); only
+# simple backtick inline-code spans are checked; and Markdown constructs other than
+# backtick fences and pipe-prefixed table rows are not parsed.  Fence recognition handles
+# only lines beginning with triple backticks, does not support tilde fences, and does not
+# validate matching fence lengths, so an unclosed fence hides the remaining file.  Prose
+# is grouped by blank lines, and Affects/policy sentence and metadata boundaries are regex
+# heuristics.  The present-tense vocabulary, type nouns,
 # relationship verbs, and policy "For" continuation are finite, so other English
-# current-state phrasings are missed; conversely, historical prose that quotes a
-# recognized present-tense declaration can be reported.  "As of" accepts any non-code
-# temporal description in the same prose paragraph but cannot cross a period.  Negation
-# is handled only when it interrupts a recognized shape (for example, "no longer the
-# current worker").  An Affects field must begin a prose paragraph/sentence or use a
+# current-state phrasings are missed; in particular, "the pool now uses" is recognized
+# but copular "the reviewer/pin is now" forms are not.  Conversely, historical prose
+# that quotes a recognized present-tense declaration can be reported.  "As of" accepts
+# any non-code temporal description in the same prose paragraph but cannot cross a period,
+# and an inline-code date or other inline-code text in that preface prevents a match.
+# Negation is handled only when it interrupts a recognized shape (for example, "no longer
+# the current worker").  An Affects field must begin a prose paragraph/sentence or use a
 # Markdown field marker; it accepts "all backends" without expanding it, treats code
 # outside parentheses as workers, and treats only slash-qualified code inside non-nested
 # parentheses as model pins; it does not validate variants.  Policy scopes end at the
@@ -45,6 +49,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCUMENTS = (ROOT / "ISSUES.md", ROOT / "tasks" / "INDEX.md")
+RUNNER = ROOT / "tests" / "run.sh"
 INLINE_CODE = r"`([^`]+)`"
 FLAGS = re.IGNORECASE | re.DOTALL
 POLICY_WORKER_RELATION = (
@@ -292,7 +297,29 @@ def backend_authority():
     model_pins = {record["model"] for record in workers.values()}
     model_pins.add(configuration["orchestrator"]["model_id"])
     provider_namespaces = {pin.split("/", 1)[0] for pin in model_pins if "/" in pin}
-    return {"worker": set(workers), "model": model_pins}, provider_namespaces
+    worker_names = set(workers) | {
+        Path(configuration["orchestrator"]["launcher"]).name
+    }
+    return {"worker": worker_names, "model": model_pins}, provider_namespaces
+
+
+def runner_discovery_failures(text):
+    """Check the runner's syntax and execution paths without executing the runner."""
+    syntax_glob = '"$ROOT"/tests/test_*.py'
+    syntax_is_discovered = any(
+        "ast.parse" in line and syntax_glob in line for line in text.splitlines()
+    )
+    execution_loop = (
+        'for test_file in "$ROOT"/tests/test_*.py; do\n'
+        '    python3 -B "$test_file"\n'
+        "done"
+    )
+    failures = []
+    if not syntax_is_discovered:
+        failures.append("run.sh syntax check does not discover tests/test_*.py")
+    if execution_loop not in text:
+        failures.append("run.sh execution does not discover and invoke tests/test_*.py")
+    return failures
 
 
 def document_failures(name, text, valid, provider_namespaces):
@@ -430,16 +457,33 @@ class ClaimExtractionRegressionTest(unittest.TestCase):
             [],
         )
 
-    def test_backend_authority_has_worker_models_and_orchestrator_model(self):
+    def test_backend_authority_has_workers_and_orchestrator_name_and_models(self):
         configuration = json.loads(
             (ROOT / "_shared" / "backends.json").read_text(encoding="utf-8")
         )
+        expected_workers = set(configuration["workers"])
+        expected_workers.add(Path(configuration["orchestrator"]["launcher"]).name)
         expected_models = {
             record["model"] for record in configuration["workers"].values()
         }
         expected_models.add(configuration["orchestrator"]["model_id"])
-        self.assertEqual(self.valid["worker"], set(configuration["workers"]))
+        self.assertEqual(self.valid["worker"], expected_workers)
         self.assertEqual(self.valid["model"], expected_models)
+
+    def test_orchestrator_name_is_authoritative_but_stale_name_is_not(self):
+        for name, expected_failure_count in (("claude-main", 0), ("claude-old", 1)):
+            with self.subTest(name=name):
+                claims, failures = document_failures(
+                    "fixture.md",
+                    f"The current backend is `{name}`.",
+                    self.valid,
+                    self.provider_namespaces,
+                )
+                self.assertEqual(
+                    [(claim.kind, claim.value) for claim in claims],
+                    [("worker", name)],
+                )
+                self.assertEqual(len(failures), expected_failure_count)
 
     def test_current_orchestrator_model_is_authoritative(self):
         claims, failures = document_failures(
@@ -711,6 +755,37 @@ class CorpusGuardRegressionTest(unittest.TestCase):
                 "the extraction rule may be vacuous"
             ],
         )
+
+
+class RunnerWiringRegressionTest(unittest.TestCase):
+    def test_runner_discovers_tests_for_syntax_checks_and_execution(self):
+        runner_text = RUNNER.read_text(encoding="utf-8")
+        self.assertEqual(runner_discovery_failures(runner_text), [])
+
+    def test_fixture_runner_fails_when_discovery_wiring_is_removed(self):
+        runner_text = RUNNER.read_text(encoding="utf-8")
+        fixtures = {
+            "syntax check": runner_text.replace(
+                '"$ROOT"/tests/test_*.py', '"$ROOT/tests/test_worker.py"', 1
+            ),
+            "test invocation": runner_text.replace(
+                '    python3 -B "$test_file"\n', "", 1
+            ),
+        }
+        expected = {
+            "syntax check": [
+                "run.sh syntax check does not discover tests/test_*.py"
+            ],
+            "test invocation": [
+                "run.sh execution does not discover and invoke tests/test_*.py"
+            ],
+        }
+        for missing_line, fixture_text in fixtures.items():
+            with self.subTest(missing_line=missing_line):
+                self.assertNotEqual(fixture_text, runner_text)
+                self.assertEqual(
+                    runner_discovery_failures(fixture_text), expected[missing_line]
+                )
 
 
 class DocumentedPoolReferencesTest(unittest.TestCase):
