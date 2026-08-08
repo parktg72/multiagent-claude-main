@@ -149,6 +149,20 @@ it, a packet defect under rule 9.
 | fable-live-test | `fable-advisor` | 20260805T002110 | **ok** — verdict approve |
 | kimi-live-test | `kimi-reviewer` | 20260804T075406 | **fail** — --file consumed the message as a path |
 | agy-catalog-match | `codex-sol` | 20260807T145505 | **ok** — producer edit applied |
+| doc-pool-test-review | `codex-terra` | 20260808T105801 | **ok** — verdict reject |
+| doc-pool-test-review | `deepseek-reviewer` | 20260808T110408 | **ok** — verdict conditional |
+| doc-pool-test-review | `fable-advisor` | 20260808T110530 | **ok** — verdict conditional |
+| doc-pool-test-review | `codex-terra` | 20260808T114859 | **ok** — verdict reject, round two |
+| doc-pool-test-review | `deepseek-reviewer` | 20260808T115434 | **ok** — verdict approve, round two |
+| doc-pool-test-review | `fable-advisor` | 20260808T115632 | **ok** — verdict conditional, round two |
+| doc-pool-test-review | `codex-terra` | 20260808T142451 | **ok** — verdict reject, round three |
+| doc-pool-test-review | `deepseek-reviewer` | 20260808T142956 | **ok** — verdict conditional, round three |
+| doc-pool-test-review | `fable-advisor` | 20260808T143249 | **ok** — verdict conditional, round three |
+| live-restore-producer | `codex-sol` | 20260808T095703 | **ok** — producer edit applied |
+| live-restore-producer | `codex-sol` | 20260808T101910 | **ok** — producer edit applied, round two |
+| live-restore-producer | `codex-sol` | 20260808T111914 | **ok** — producer edit applied, round three |
+| live-restore-producer | `codex-sol` | 20260808T135849 | **ok** — producer edit applied, round four |
+| live-restore-producer | `codex-sol` | 20260808T150240 | **ok** — producer edit applied, round five |
 | agy-catalog-review | `codex-terra` | 20260807T152141 | **ok** — verdict conditional |
 | agy-catalog-review | `codex-luna` | 20260807T152517 | **ok** — verdict conditional |
 | agy-catalog-review | `fable-advisor` | 20260807T152828 | **ok** — verdict conditional |
@@ -181,3 +195,29 @@ it, a packet defect under rule 9.
 | zen-repin-live | `deepseek-reviewer` | 20260806T043336 | **ok** — verdict conditional |
 | zen-repin-live | `kimi-reviewer` | 20260806T042330 | **fail** — exit 0, reason unknown, zero input and output tokens, cost 0, no text part after 63s |
 | zen-repin-live | `kimi-reviewer` | 20260806T043516 | **ok** — verdict approve |
+
+## What the longest review sequence produced
+
+`live-restore-producer` and `doc-pool-test-review` ran five producer rounds and three
+review rounds on one regression test, all under two approval tuples. `codex-terra`
+rejected every round; `deepseek-reviewer` moved conditional, approve, conditional;
+`fable-advisor` stayed conditional throughout. Every objection was re-measured before
+being acted on, and one was refused: a reviewer wanted negated prose covered, but ignoring
+"`kimi-reviewer` is no longer the current worker" is correct.
+
+The findings changed kind as the rounds went on, which is the argument for having run
+them. Round one was rule accuracy. Round two was false positives on correct prose. Round
+three was that the suite did not assert its own core behaviour — deleting the authority
+comparison left every test green. Round five was that the suite could be switched off
+entirely, because `tests/run.sh` named its files one at a time and deleting one line was
+silent.
+
+Four of main's evidence packets contradicted themselves, each time because main asserted
+what a capture said instead of reading it. The fifth carried a mechanical check that every
+`file:line` cited in the evidence is covered by the excerpt supplied with it, and no
+reviewer raised a packet defect after that.
+
+The sequence was stopped by decision, not by exhaustion. Three limits are recorded in the
+test's header rather than fixed: a copular "is now", inline code inside an "As of" preface,
+and the finite recognised vocabulary itself. English has unboundedly many ways to say that
+something is the case now, and the test catches the drift that actually happened.
